@@ -40,6 +40,8 @@
     adminEmail: document.getElementById("admin-email"),
     liveBadge: document.getElementById("live-badge"),
     statTotal: document.getElementById("stat-total"),
+    statAttending: document.getElementById("stat-attending"),
+    statAbsent: document.getElementById("stat-absent"),
     statDrawn: document.getElementById("stat-drawn"),
     statPending: document.getElementById("stat-pending"),
     statKiller: document.getElementById("stat-killer"),
@@ -82,6 +84,13 @@
   let latestPin = "";
   /** @type {"all"|"drawn"|"pending"} */
   let statusFilter = "all";
+  /** @type {"all"|"attending"|"absent"} */
+  let attendanceFilter = "all";
+
+  function isAttending(a) {
+    return a && a.is_attending !== false;
+  }
+
   function showView(name) {
     Object.entries(views).forEach(([key, el]) => {
       el.classList.toggle("hidden", key !== name);
@@ -151,11 +160,17 @@
 
   function renderStats() {
     const total = ambassadors.length;
+    const attendingList = ambassadors.filter(isAttending);
+    const attending = attendingList.length;
     const drawnList = ambassadors.filter((a) => a.is_drawn);
     const drawn = drawnList.length;
+    // Pending draws only count physical attendees (non-attendees cannot draw).
+    const pendingAttending = attendingList.filter((a) => !a.is_drawn).length;
     els.statTotal.textContent = String(total);
+    if (els.statAttending) els.statAttending.textContent = String(attending);
+    if (els.statAbsent) els.statAbsent.textContent = String(total - attending);
     els.statDrawn.textContent = String(drawn);
-    els.statPending.textContent = String(total - drawn);
+    els.statPending.textContent = String(pendingAttending);
 
     const killerRemaining =
       systemConfig && systemConfig.killer ? systemConfig.killer.remaining : null;
@@ -202,6 +217,8 @@
       .filter((a) => {
         if (statusFilter === "drawn" && !a.is_drawn) return false;
         if (statusFilter === "pending" && a.is_drawn) return false;
+        if (attendanceFilter === "attending" && !isAttending(a)) return false;
+        if (attendanceFilter === "absent" && isAttending(a)) return false;
         if (!q) return true;
         return (
           String(a.id).toLowerCase().includes(q) ||
@@ -215,9 +232,15 @@
     els.tableEmpty.classList.toggle("hidden", rows.length > 0);
     els.tableBody.innerHTML = rows
       .map((a) => {
+        const attending = isAttending(a);
+        const attendance = attending
+          ? '<span class="text-brand">出席</span>'
+          : '<span class="text-mute">未出席</span>';
         const status = a.is_drawn
           ? '<span class="text-brand">已抽取</span>'
-          : '<span class="text-mute">未抽取</span>';
+          : attending
+            ? '<span class="text-mute">未抽取</span>'
+            : '<span class="text-mute">不可抽籤</span>';
         const actionCell = a.is_drawn
           ? `<button
                 type="button"
@@ -230,6 +253,7 @@
           <tr class="hover:bg-panel/60">
             <td class="px-4 py-3 font-mono text-xs">${a.id}</td>
             <td class="px-4 py-3">${a.name || ""}</td>
+            <td class="px-4 py-3">${attendance}</td>
             <td class="px-4 py-3">${a.is_drawn ? a.role || "—" : "—"}</td>
             <td class="px-4 py-3">${status}</td>
             <td class="px-4 py-3 text-xs text-mute">${formatTime(a.drawn_at)}</td>
@@ -459,17 +483,29 @@
     }
   });
 
+  function styleChipGroup(selector, activeEl) {
+    document.querySelectorAll(selector).forEach((c) => {
+      const active = c === activeEl;
+      c.classList.toggle("border-brand", active);
+      c.classList.toggle("bg-brand/20", active);
+      c.classList.toggle("text-white", active);
+      c.classList.toggle("border-line", !active);
+      c.classList.toggle("text-mute", !active);
+    });
+  }
+
   document.querySelectorAll(".filter-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       statusFilter = chip.getAttribute("data-filter") || "all";
-      document.querySelectorAll(".filter-chip").forEach((c) => {
-        const active = c === chip;
-        c.classList.toggle("border-brand", active);
-        c.classList.toggle("bg-brand/20", active);
-        c.classList.toggle("text-white", active);
-        c.classList.toggle("border-line", !active);
-        c.classList.toggle("text-mute", !active);
-      });
+      styleChipGroup(".filter-chip", chip);
+      renderTable();
+    });
+  });
+
+  document.querySelectorAll(".attendance-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      attendanceFilter = chip.getAttribute("data-attendance") || "all";
+      styleChipGroup(".attendance-chip", chip);
       renderTable();
     });
   });

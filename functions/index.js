@@ -14,8 +14,22 @@ setGlobalOptions({ region: "asia-east1" });
 const db = getFirestore();
 const CONFIG_DOC = db.collection("system_config").doc("main");
 
+/** Normalize numeric ids so "002" and "2" resolve to the same doc. */
 function normalizeId(raw) {
-  return String(raw ?? "").trim();
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  if (/^\d+$/.test(s)) return String(Number(s));
+  return s;
+}
+
+function assertAttending(ambassador) {
+  // Legacy docs without the field are treated as attending (backward compatible).
+  if (ambassador && ambassador.is_attending === false) {
+    throw new HttpsError(
+      "failed-precondition",
+      "此大使未登記參加實體活動，無法抽籤。如有疑問請聯絡管理員"
+    );
+  }
 }
 
 function normalizeName(raw) {
@@ -72,6 +86,7 @@ function publicPayload(ambassador, extra = {}) {
     role: ambassador.role || "",
     is_drawn: !!ambassador.is_drawn,
     drawn_at: ambassador.drawn_at || null,
+    is_attending: ambassador.is_attending !== false,
     ...extra,
   };
 }
@@ -112,6 +127,8 @@ exports.verifyCheckin = onCall({ cors: true }, async (request) => {
       ...publicPayload(ambassador),
     };
   }
+
+  assertAttending(ambassador);
 
   if (code.used) {
     throw new HttpsError(
@@ -170,6 +187,8 @@ exports.drawRole = onCall({ cors: true }, async (request) => {
     if (ambassador.is_drawn) {
       return publicPayload(ambassador, { status: "already_drawn" });
     }
+
+    assertAttending(ambassador);
 
     if (code.used) {
       throw new HttpsError(
@@ -349,6 +368,11 @@ exports.resetAmbassador = onCall({ cors: true }, async (request) => {
           role: "",
           is_drawn: false,
           drawn_at: FieldValue.delete(),
+          // Preserve attendance; default true only when field was never set.
+          is_attending:
+            ambassador.is_attending === undefined
+              ? true
+              : !!ambassador.is_attending,
         },
         { merge: true }
       );
@@ -432,6 +456,7 @@ exports.exportPinRoster = onCall({ cors: true }, async (request) => {
         pin: c.pin || "",
         used: !!c.used,
         is_drawn: !!d.is_drawn,
+        is_attending: d.is_attending !== false,
       };
     })
     .sort((a, b) => Number(a.id) - Number(b.id) || String(a.id).localeCompare(String(b.id)));
@@ -516,16 +541,19 @@ exports.exportRoster = onCall({ cors: true }, async (request) => {
         role: d.role || "",
         is_drawn: !!d.is_drawn,
         drawn_at: formatDrawnAt(d.drawn_at),
+        is_attending: d.is_attending !== false,
       };
     })
     .sort((a, b) => Number(a.id) - Number(b.id) || String(a.id).localeCompare(String(b.id)));
 
-  const header = "編號,姓名,角色,是否已抽取,抽籤時間";
+  const header = "編號,姓名,角色,是否已抽取,抽籤時間,實體出席";
   const csv = [
     header,
     ...rows.map(
       (r) =>
-        `${r.id},${escapeCsv(r.name)},${escapeCsv(r.role)},${r.is_drawn ? "是" : "否"},${r.drawn_at}`
+        `${r.id},${escapeCsv(r.name)},${escapeCsv(r.role)},${r.is_drawn ? "是" : "否"},${r.drawn_at},${
+          r.is_attending ? "是" : "否"
+        }`
     ),
   ].join("\n");
 
@@ -564,19 +592,20 @@ exports.exportFinalRoster = onCall({ cors: true }, async (request) => {
         role: d.role || "",
         is_drawn: !!d.is_drawn,
         drawn_at: formatDrawnAt(d.drawn_at),
+        is_attending: d.is_attending !== false,
         is_killer: !!s.is_killer,
       };
     })
     .sort((a, b) => Number(a.id) - Number(b.id) || String(a.id).localeCompare(String(b.id)));
 
-  const header = "編號,姓名,角色,是否已抽取,抽籤時間,是否兇手";
+  const header = "編號,姓名,角色,是否已抽取,抽籤時間,實體出席,是否兇手";
   const csv = [
     header,
     ...rows.map(
       (r) =>
         `${r.id},${escapeCsv(r.name)},${escapeCsv(r.role)},${r.is_drawn ? "是" : "否"},${r.drawn_at},${
-          r.is_killer ? "是" : "否"
-        }`
+          r.is_attending ? "是" : "否"
+        },${r.is_killer ? "是" : "否"}`
     ),
   ].join("\n");
 
