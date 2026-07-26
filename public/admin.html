@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 管理後台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 70% 45% at 20% -10%, rgba(59, 111, 232, 0.14), transparent 55%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 3px rgba(59, 111, 232, 0.2);
+      }
+      .stat-bar {
+        height: 6px;
+        background: #2a2a2a;
+        overflow: hidden;
+      }
+      .stat-bar > span {
+        display: block;
+        height: 100%;
+        background: #3b6fe8;
+        transition: width 0.35s ease;
+      }
+      table {
+        border-collapse: collapse;
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased">
+    <!-- Login -->
+    <section id="view-login" class="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
+      <header class="mb-10 text-center">
+        <p class="mb-3 text-xs font-medium tracking-[0.08em] text-brand lowercase">nuva</p>
+        <h1 class="text-3xl font-semibold tracking-tight">管理後台</h1>
+        <p class="mt-3 text-sm text-mute">僅限管理員帳號登入</p>
+      </header>
+      <form id="login-form" class="space-y-4" autocomplete="on">
+        <label class="block">
+          <span class="mb-1.5 block text-xs text-mute">Email</span>
+          <input
+            id="login-email"
+            type="email"
+            required
+            class="input-field w-full border border-line bg-panel px-4 py-3 text-base text-white"
+            placeholder="admin@example.com"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-1.5 block text-xs text-mute">密碼</span>
+          <input
+            id="login-password"
+            type="password"
+            required
+            class="input-field w-full border border-line bg-panel px-4 py-3 text-base text-white"
+          />
+        </label>
+        <p id="login-error" class="hidden text-sm text-red-400" role="alert"></p>
+        <button
+          id="btn-login"
+          type="submit"
+          class="w-full bg-brand px-4 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:brightness-110"
+        >
+          登入
+        </button>
+      </form>
+      <p class="mt-8 text-center text-xs text-mute">
+        <a href="/" class="text-mute underline-offset-2 hover:text-white hover:underline">返回前台</a>
+      </p>
+      <p class="mt-10 text-center text-[11px] tracking-wide text-mute/70">
+        Made by none.tech · William Lu
+      </p>
+    </section>
+
+    <!-- Denied -->
+    <section id="view-denied" class="hidden mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12 text-center">
+      <p class="mb-3 text-xs tracking-[0.08em] text-brand lowercase">nuva</p>
+      <h1 class="text-2xl font-semibold">無權限</h1>
+      <p id="denied-msg" class="mt-3 text-sm text-mute">此帳號未授權存取管理後台。</p>
+      <button
+        id="btn-denied-logout"
+        type="button"
+        class="mt-8 border border-line bg-panel px-4 py-3 text-sm text-mute hover:border-brand hover:text-white"
+      >
+        登出
+      </button>
+      <p class="mt-10 text-center text-[11px] tracking-wide text-mute/70">
+        Made by none.tech · William Lu
+      </p>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="view-dashboard" class="hidden min-h-screen">
+      <header class="border-b border-line">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
+          <div>
+            <p class="text-[11px] tracking-[0.08em] text-brand lowercase">nuva admin</p>
+            <h1 class="text-lg font-semibold sm:text-xl">抽籤監控後台</h1>
+          </div>
+          <div class="flex items-center gap-3 text-sm">
+            <span id="admin-email" class="hidden text-mute sm:inline"></span>
+            <button
+              id="btn-logout"
+              type="button"
+              class="border border-line bg-panel px-3 py-2 text-xs text-mute transition hover:border-brand hover:text-white"
+            >
+              登出
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="mx-auto max-w-6xl px-5 py-8">
+        <div class="mb-8 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 class="text-base font-medium">即時統計</h2>
+            <p class="mt-1 text-xs text-mute">不含兇手身分</p>
+          </div>
+          <p id="live-badge" class="text-xs text-mute">連線中…</p>
+        </div>
+
+        <div class="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div class="border border-line bg-panel px-4 py-4">
+            <p class="text-xs text-mute">大使總數</p>
+            <p id="stat-total" class="mt-2 text-2xl font-semibold">—</p>
+          </div>
+          <div class="border border-line bg-panel px-4 py-4">
+            <p class="text-xs text-mute">已抽取</p>
+            <p id="stat-drawn" class="mt-2 text-2xl font-semibold text-brand">—</p>
+          </div>
+          <div class="border border-line bg-panel px-4 py-4">
+            <p class="text-xs text-mute">未抽取</p>
+            <p id="stat-pending" class="mt-2 text-2xl font-semibold">—</p>
+          </div>
+          <div class="border border-line bg-panel px-4 py-4">
+            <p class="text-xs text-mute">兇手名額剩餘</p>
+            <p id="stat-killer" class="mt-2 text-2xl font-semibold">—</p>
+          </div>
+        </div>
+
+        <div class="mb-12">
+          <h3 class="mb-4 text-sm font-medium">角色分發 / 庫存</h3>
+          <div id="role-stats" class="space-y-4"></div>
+        </div>
+
+        <!-- Phase 5: restore + print/QR -->
+        <div class="mb-12 grid gap-6 lg:grid-cols-2">
+          <div class="border border-line bg-panel/60 p-5">
+            <h3 class="text-sm font-medium">恢復為未抽取</h3>
+            <p class="mt-1 text-xs text-mute">
+              僅清除角色與兇手標記並歸還庫存；報到 PIN 不變，可直接重新抽籤
+            </p>
+            <form id="restore-form" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label class="block flex-1 text-xs text-mute">
+                大使編號
+                <input
+                  id="restore-id"
+                  type="text"
+                  inputmode="numeric"
+                  required
+                  placeholder="例如 12"
+                  class="input-field mt-1 w-full border border-line bg-ink px-3 py-2 text-sm text-white"
+                />
+              </label>
+              <button
+                type="submit"
+                id="btn-restore"
+                class="bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:brightness-110"
+              >
+                恢復未抽取
+              </button>
+            </form>
+            <p id="restore-msg" class="mt-3 hidden text-sm"></p>
+          </div>
+
+          <div class="border border-line bg-panel/60 p-5">
+            <h3 class="text-sm font-medium">報到工具</h3>
+            <p class="mt-1 text-xs text-mute">QR 落地與 PIN 紙本列印（需管理員登入）</p>
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="/qr.html"
+                target="_blank"
+                class="border border-line bg-ink px-4 py-2.5 text-center text-sm text-white hover:border-brand"
+              >
+                開啟 QR 落地頁
+              </a>
+              <a
+                href="/print.html"
+                target="_blank"
+                class="border border-line bg-ink px-4 py-2.5 text-center text-sm text-white hover:border-brand"
+              >
+                列印 PIN 報到單
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase 4 ops -->
+        <div class="mb-12 grid gap-6 lg:grid-cols-2">
+          <div class="border border-line bg-panel/60 p-5">
+            <h3 class="text-sm font-medium">調整角色池</h3>
+            <p class="mt-1 text-xs text-mute">透過 Cloud Function 寫入，前端不可直接改庫存</p>
+            <form id="pool-form" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <label class="block text-xs text-mute">
+                大力士
+                <input id="pool-strong" type="number" min="0" step="1" class="input-field mt-1 w-full border border-line bg-ink px-3 py-2 text-sm text-white" />
+              </label>
+              <label class="block text-xs text-mute">
+                品味家
+                <input id="pool-taste" type="number" min="0" step="1" class="input-field mt-1 w-full border border-line bg-ink px-3 py-2 text-sm text-white" />
+              </label>
+              <label class="block text-xs text-mute">
+                判斷家
+                <input id="pool-judge" type="number" min="0" step="1" class="input-field mt-1 w-full border border-line bg-ink px-3 py-2 text-sm text-white" />
+              </label>
+              <label class="block text-xs text-mute">
+                兇手剩餘
+                <input id="pool-killer" type="number" min="0" step="1" class="input-field mt-1 w-full border border-line bg-ink px-3 py-2 text-sm text-white" />
+              </label>
+              <label class="col-span-2 flex items-center gap-2 text-xs text-mute sm:col-span-4">
+                <input id="pool-sync-initial" type="checkbox" class="accent-brand" />
+                同步更新 initial（初始名額）
+              </label>
+              <div class="col-span-2 sm:col-span-4">
+                <p id="pool-msg" class="mb-2 hidden text-sm"></p>
+                <button type="submit" id="btn-pool-save" class="bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:brightness-110">
+                  儲存角色池
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="border border-line bg-panel/60 p-5">
+            <h3 class="text-sm font-medium">匯出名單</h3>
+            <p class="mt-1 text-xs text-mute">預設匯出不含兇手；完整結局需二次確認</p>
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+              <button
+                id="btn-export-roster"
+                type="button"
+                class="border border-line bg-ink px-4 py-2.5 text-sm text-white hover:border-brand"
+              >
+                匯出一般名單
+              </button>
+              <button
+                id="btn-export-final"
+                type="button"
+                class="border border-red-900/60 bg-ink px-4 py-2.5 text-sm text-red-300 hover:border-red-400"
+              >
+                匯出完整結局名單（含兇手）
+              </button>
+            </div>
+            <p id="export-msg" class="mt-3 hidden text-sm"></p>
+          </div>
+        </div>
+
+        <div>
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="mr-2 text-sm font-medium">大使資料總表</h3>
+              <button type="button" data-filter="all" class="filter-chip border border-brand bg-brand/20 px-2.5 py-1 text-xs text-white">全部</button>
+              <button type="button" data-filter="drawn" class="filter-chip border border-line px-2.5 py-1 text-xs text-mute hover:border-brand hover:text-white">已抽取</button>
+              <button type="button" data-filter="pending" class="filter-chip border border-line px-2.5 py-1 text-xs text-mute hover:border-brand hover:text-white">未抽取</button>
+            </div>
+            <input
+              id="table-filter"
+              type="search"
+              placeholder="搜尋編號或姓名"
+              class="input-field w-full max-w-xs border border-line bg-panel px-3 py-2 text-sm text-white sm:w-56"
+            />
+          </div>
+          <div class="overflow-x-auto border border-line">
+            <table class="w-full min-w-[640px] text-left text-sm">
+              <thead class="bg-panel text-xs text-mute">
+                <tr>
+                  <th class="px-4 py-3 font-medium">編號</th>
+                  <th class="px-4 py-3 font-medium">姓名</th>
+                  <th class="px-4 py-3 font-medium">角色</th>
+                  <th class="px-4 py-3 font-medium">狀態</th>
+                  <th class="px-4 py-3 font-medium">抽籤時間</th>
+                  <th class="px-4 py-3 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody id="table-body" class="divide-y divide-line"></tbody>
+            </table>
+          </div>
+          <p id="table-empty" class="mt-4 hidden text-center text-sm text-mute">尚無資料</p>
+          <p id="ops-msg" class="mt-4 hidden text-sm"></p>
+        </div>
+      </div>
+      <p class="mt-10 pb-10 text-center text-[11px] tracking-wide text-mute/70">Made by none.tech · William Lu</p>
+    </section>
+
+    <!-- Final export confirm modal -->
+    <div id="modal-final" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 px-5">
+      <div class="w-full max-w-md border border-line bg-panel p-6">
+        <h3 class="text-lg font-semibold">確認匯出完整結局名單？</h3>
+        <p class="mt-3 text-sm leading-relaxed text-mute">
+          此檔案包含兇手身分，請勿在遊戲進行中外流，是否確定匯出？
+        </p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button id="btn-final-cancel" type="button" class="border border-line px-4 py-2 text-sm text-mute hover:text-white">
+            取消
+          </button>
+          <button id="btn-final-confirm" type="button" class="bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:brightness-110">
+            確定匯出
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset PIN result modal -->
+    <div id="modal-pin" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 px-5">
+      <div class="w-full max-w-md border border-line bg-panel p-6">
+        <h3 class="text-lg font-semibold">已恢復為未抽取</h3>
+        <p id="pin-modal-body" class="mt-3 text-sm leading-relaxed text-mute"></p>
+        <p class="mt-4 text-xs text-mute">新報到 PIN</p>
+        <p id="pin-modal-pin" class="mt-1 font-mono text-2xl tracking-widest text-brand"></p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button id="btn-pin-copy" type="button" class="border border-line px-4 py-2 text-sm text-mute hover:text-white">
+            複製 PIN
+          </button>
+          <button id="btn-pin-close" type="button" class="bg-brand px-4 py-2 text-sm font-semibold text-white">
+            關閉
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/admin.js?v=5"></script>
+  </body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — PIN 報到單列印</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --panel: #1f1f1f;
+        --line: #2a2a2a;
+        --mute: #a3a3a3;
+        --brand: #3b6fe8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Noto Sans TC", system-ui, sans-serif;
+        background: var(--bg);
+        color: #fff;
+        min-height: 100vh;
+      }
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(10, 10, 10, 0.92);
+      }
+      .toolbar button,
+      .toolbar a {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: #fff;
+        padding: 8px 14px;
+        text-decoration: none;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .toolbar button.primary {
+        background: var(--brand);
+        border-color: var(--brand);
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      #login-box,
+      #status {
+        max-width: 420px;
+        margin: 48px auto;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 28px;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--mute);
+        margin-bottom: 12px;
+      }
+      input {
+        width: 100%;
+        margin-top: 6px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        background: #0a0a0a;
+        color: #fff;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .slip {
+        border: 1px solid #bbb;
+        background: #fff;
+        color: #111;
+        padding: 14px;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .slip .brand {
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        color: #3b6fe8;
+      }
+      .slip .name {
+        margin-top: 8px;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .slip .meta {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #555;
+      }
+      .slip .pin {
+        margin-top: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 22px;
+        letter-spacing: 0.18em;
+      }
+      .slip .hint {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #777;
+      }
+      .used {
+        opacity: 0.55;
+      }
+      @media print {
+        body {
+          background: #fff;
+          color: #000;
+        }
+        .toolbar,
+        #login-box,
+        #status {
+          display: none !important;
+        }
+        .wrap {
+          max-width: none;
+          padding: 0;
+        }
+        .grid {
+          gap: 8px;
+        }
+        .slip {
+          border-color: #000;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar" id="toolbar" hidden>
+      <div>
+        <strong>PIN 報到單</strong>
+        <span id="count-label" style="color: #a3a3a3; font-size: 12px; margin-left: 8px"></span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <a href="/admin.html">回後台</a>
+        <a href="/qr.html" target="_blank">QR 頁</a>
+        <button type="button" class="primary" id="btn-print">列印</button>
+        <button type="button" id="btn-logout">登出</button>
+      </div>
+    </div>
+
+    <div id="login-box">
+      <h1 style="margin: 0 0 8px; font-size: 1.4rem">管理員登入</h1>
+      <p style="margin: 0 0 18px; color: #a3a3a3; font-size: 13px">載入報到 PIN 前需驗證管理員身份</p>
+      <form id="login-form">
+        <label>Email<input id="email" type="email" required /></label>
+        <label>密碼<input id="password" type="password" required /></label>
+        <p id="login-error" style="color: #f87171; font-size: 13px; display: none"></p>
+        <button type="submit" class="primary" style="width: 100%; margin-top: 8px; padding: 12px; border: 0; background: #3b6fe8; color: #fff">
+          登入並載入 PIN
+        </button>
+      </form>
+      <p style="margin: 24px 0 0; text-align: center; font-size: 11px; letter-spacing: 0.06em; color: rgba(163,163,163,0.7)">
+        Made by none.tech · William Lu
+      </p>
+    </div>
+
+    <p id="status" hidden></p>
+    <div class="wrap">
+      <div class="grid" id="slips"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script>
+      firebase.initializeApp(window.firebaseConfig);
+      const auth = firebase.auth();
+      const functions = firebase.app().functions("asia-east1");
+      const ensureAdminClaim = functions.httpsCallable("ensureAdminClaim");
+      const exportPinRoster = functions.httpsCallable("exportPinRoster");
+
+      const loginBox = document.getElementById("login-box");
+      const toolbar = document.getElementById("toolbar");
+      const status = document.getElementById("status");
+      const slips = document.getElementById("slips");
+
+      async function ensureAdmin(user) {
+        const token = await user.getIdTokenResult();
+        if (token.claims.admin === true) return true;
+        await ensureAdminClaim({});
+        await user.getIdToken(true);
+        const refreshed = await user.getIdTokenResult();
+        return refreshed.claims.admin === true;
+      }
+
+      async function loadPins() {
+        status.hidden = false;
+        status.textContent = "載入 PIN 中…";
+        const { data } = await exportPinRoster({});
+        slips.innerHTML = data.rows
+          .map((r) => {
+            const usedNote = r.used || r.is_drawn ? "（已使用／已抽取）" : "報到後輸入此 PIN 抽籤";
+            return `<article class="slip ${r.used || r.is_drawn ? "used" : ""}">
+              <div class="brand">nuva</div>
+              <div class="name">${r.name}</div>
+              <div class="meta">編號 ${r.id}</div>
+              <div class="pin">${r.pin || "—"}</div>
+              <div class="hint">${usedNote}<br/>掃 QR 或前往抽籤頁完成身份抽取</div>
+            </article>`;
+          })
+          .join("");
+        document.getElementById("count-label").textContent = `共 ${data.count} 張`;
+        status.hidden = true;
+        toolbar.hidden = false;
+        loginBox.hidden = true;
+      }
+
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          toolbar.hidden = true;
+          loginBox.hidden = false;
+          slips.innerHTML = "";
+          return;
+        }
+        try {
+          const ok = await ensureAdmin(user);
+          if (!ok) throw new Error("此帳號沒有管理員權限");
+          await loadPins();
+        } catch (err) {
+          status.hidden = false;
+          status.textContent = (err && err.message) || "載入失敗";
+        }
+      });
+
+      document.getElementById("login-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById("login-error");
+        errEl.style.display = "none";
+        try {
+          await auth.signInWithEmailAndPassword(
+            document.getElementById("email").value.trim(),
+            document.getElementById("password").value
+          );
+        } catch (err) {
+          errEl.style.display = "block";
+          errEl.textContent = "登入失敗，請檢查帳密";
+        }
+      });
+
+      document.getElementById("btn-print").addEventListener("click", () => window.print());
+      document.getElementById("btn-logout").addEventListener("click", () => auth.signOut());
+    </script>
+  </body>
+</html>

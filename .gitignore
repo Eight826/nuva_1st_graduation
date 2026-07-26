@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Secrets & local config (never commit)
+serviceAccountKey.json
+**/serviceAccountKey.json
+*-firebase-adminsdk-*.json
+*.pem
+.env
+.env.local
+.env.*.local
+
+# Firebase / Google
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+*.log
+
+# Seed / admin secrets (never commit)
+scripts/output/*
+!scripts/output/.gitkeep
+**/pin-roster.csv
+**/pin-roster.txt
+**/admin-credentials.txt
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~

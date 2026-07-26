@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 掃描抽籤</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --panel: #1f1f1f;
+        --line: #2a2a2a;
+        --mute: #a3a3a3;
+        --brand: #3b6fe8;
+        --text: #ffffff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: "Noto Sans TC", system-ui, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(ellipse 70% 45% at 50% -10%, rgba(59, 111, 232, 0.2), transparent 55%),
+          var(--bg);
+      }
+      main {
+        width: min(100%, 420px);
+        text-align: center;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 40px 28px;
+      }
+      .brand {
+        letter-spacing: 0.08em;
+        font-size: 12px;
+        color: var(--brand);
+        margin-bottom: 12px;
+        text-transform: lowercase;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+      }
+      p {
+        color: var(--mute);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin: 12px 0 0;
+      }
+      #qr {
+        margin: 28px auto 0;
+        width: 220px;
+        height: 220px;
+        padding: 12px;
+        background: #fff;
+        display: grid;
+        place-items: center;
+      }
+      #qr img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+      .url {
+        margin-top: 16px;
+        font-size: 12px;
+        word-break: break-all;
+        color: var(--mute);
+      }
+      a.cta {
+        display: inline-block;
+        margin-top: 24px;
+        background: var(--brand);
+        color: #fff;
+        text-decoration: none;
+        padding: 12px 20px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .credit {
+        margin-top: 28px;
+        text-align: center;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: rgba(163, 163, 163, 0.7);
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <main>
+        <div class="brand">nuva</div>
+        <h1>身份抽取</h1>
+        <p>請掃描 QR Code，輸入編號、姓名與報到 PIN 後抽取身分</p>
+        <div id="qr">
+          <img src="./assets/qr.png" alt="抽籤頁 QR Code" width="196" height="196" />
+        </div>
+        <p class="url" id="draw-url"></p>
+        <a class="cta" id="open-link" href="/">直接開啟抽籤頁</a>
+      </main>
+      <p class="credit">Made by none.tech · William Lu</p>
+    </div>
+    <script>
+      const url = "https://nuva-guraduation.web.app/";
+      document.getElementById("draw-url").textContent = url;
+      document.getElementById("open-link").href = url;
+    </script>
+  </body>
+</html>
