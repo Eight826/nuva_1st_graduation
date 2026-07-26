@@ -109,6 +109,15 @@
         animation: cardPulse 0.45s ease-out;
       }
 
+      .card-3d.is-spinning {
+        transition: none;
+        animation: cardSpinDraw 2.4s cubic-bezier(0.12, 0.7, 0.18, 1) forwards;
+      }
+
+      .draw-status {
+        min-height: 1.25rem;
+      }
+
       @keyframes borderFlash {
         0% {
           box-shadow: 0 0 0 1px rgba(59, 111, 232, 1), 0 0 72px rgba(59, 111, 232, 0.65);
@@ -138,6 +147,15 @@
         }
         100% {
           transform: scale(1);
+        }
+      }
+
+      @keyframes cardSpinDraw {
+        0% {
+          transform: rotateY(0deg);
+        }
+        100% {
+          transform: rotateY(1440deg);
         }
       }
 
@@ -206,6 +224,10 @@
         .fade-in {
           animation: none !important;
           transition: none !important;
+        }
+
+        .card-3d.is-spinning {
+          animation: none !important;
         }
       }
     </style>
@@ -291,9 +313,9 @@
             <div id="result-card" class="card-3d">
               <div class="card-face front">
                 <p class="text-xs tracking-[0.2em] text-mute">IDENTITY</p>
-                <p class="mt-4 text-mute">翻開中…</p>
+                <p id="result-front-label" class="mt-4 text-mute">翻開中…</p>
               </div>
-                  <div class="card-face back">
+              <div class="card-face back">
                 <p class="text-xs tracking-[0.2em] text-mute">YOUR ROLE</p>
                 <p id="result-role" class="role-pop mt-4 text-3xl font-semibold tracking-tight"></p>
                 <span
@@ -307,7 +329,7 @@
               </div>
             </div>
           </div>
-          <p id="result-note" class="mt-8 text-center text-sm text-mute"></p>
+          <p id="result-note" class="draw-status mt-8 text-center text-sm text-mute"></p>
           <button
             id="btn-reset"
             type="button"
