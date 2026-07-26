@@ -21,6 +21,8 @@
   const adjustRolePool = functions.httpsCallable("adjustRolePool");
   const exportRoster = functions.httpsCallable("exportRoster");
   const exportFinalRoster = functions.httpsCallable("exportFinalRoster");
+  const getKillerAssignment = functions.httpsCallable("getKillerAssignment");
+  const setKiller = functions.httpsCallable("setKiller");
 
   const views = {
     login: document.getElementById("view-login"),
@@ -73,6 +75,13 @@
     pinModalPin: document.getElementById("pin-modal-pin"),
     btnPinCopy: document.getElementById("btn-pin-copy"),
     btnPinClose: document.getElementById("btn-pin-close"),
+    killerModeBadge: document.getElementById("killer-mode-badge"),
+    killerCurrent: document.getElementById("killer-current"),
+    killerForm: document.getElementById("killer-form"),
+    killerSelect: document.getElementById("killer-select"),
+    btnKillerSet: document.getElementById("btn-killer-set"),
+    btnKillerClear: document.getElementById("btn-killer-clear"),
+    killerMsg: document.getElementById("killer-msg"),
   };
 
   /** @type {Array<Record<string, any>>} */
@@ -86,6 +95,8 @@
   let statusFilter = "all";
   /** @type {"all"|"attending"|"absent"} */
   let attendanceFilter = "all";
+  /** @type {{ id: string, name: string } | null} */
+  let currentKiller = null;
 
   function isAttending(a) {
     return a && a.is_attending !== false;
@@ -292,9 +303,61 @@
     return data;
   }
 
+  function fillKillerSelect() {
+    if (!els.killerSelect) return;
+    const selected = els.killerSelect.value;
+    const attending = ambassadors.filter(isAttending).slice().sort(numericIdSort);
+    const options = [
+      '<option value="">請選擇…</option>',
+      ...attending.map(
+        (a) =>
+          `<option value="${a.id}">${a.id}　${a.name || ""}${
+            a.is_drawn ? `（${a.role || "已抽"}）` : "（未抽）"
+          }</option>`
+      ),
+    ];
+    els.killerSelect.innerHTML = options.join("");
+    if (selected && attending.some((a) => String(a.id) === String(selected))) {
+      els.killerSelect.value = selected;
+    } else if (currentKiller && currentKiller.id) {
+      els.killerSelect.value = String(currentKiller.id);
+    }
+  }
+
+  async function refreshKillerAssignment() {
+    if (!els.killerCurrent) return;
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      await user.getIdToken(true);
+      const { data } = await getKillerAssignment({});
+      const modeLabel = data.mode === "manual" ? "手動指定" : "抽籤隨機";
+      if (els.killerModeBadge) {
+        els.killerModeBadge.textContent = `模式：${modeLabel}`;
+        els.killerModeBadge.classList.toggle("text-red-300", data.mode === "manual");
+      }
+      if (data.killers && data.killers.length) {
+        currentKiller = data.killers[0];
+        els.killerCurrent.textContent = `目前犯人：${currentKiller.name}（編號 ${currentKiller.id}）`;
+        els.killerCurrent.classList.remove("text-mute");
+        els.killerCurrent.classList.add("text-red-300");
+      } else {
+        currentKiller = null;
+        els.killerCurrent.textContent = "目前犯人：尚未指定";
+        els.killerCurrent.classList.add("text-mute");
+        els.killerCurrent.classList.remove("text-red-300");
+      }
+      fillKillerSelect();
+    } catch (err) {
+      els.killerCurrent.textContent = `目前犯人：讀取失敗（${friendlyError(err)}）`;
+      els.killerCurrent.classList.add("text-mute");
+    }
+  }
+
   function refreshUi() {
     renderStats();
     renderTable();
+    fillKillerSelect();
   }
 
   function stopListeners() {
@@ -370,6 +433,7 @@
     els.adminEmail.classList.remove("hidden");
     showView("dashboard");
     startListeners();
+    refreshKillerAssignment();
   }
 
   function downloadCsv(filename, csv) {
@@ -509,6 +573,66 @@
       renderTable();
     });
   });
+
+  if (els.killerForm) {
+    els.killerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = (els.killerSelect.value || "").trim();
+      if (!id) return;
+      const person = ambassadors.find((a) => String(a.id) === String(id));
+      const name = (person && person.name) || id;
+      if (
+        !window.confirm(
+          `確定將「${name}」（${id}）指定為犯人（兇手）？\n此資訊高度機密，請勿在遊戲進行中外流。`
+        )
+      ) {
+        return;
+      }
+      els.btnKillerSet.disabled = true;
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error("尚未登入");
+        await user.getIdToken(true);
+        const { data } = await setKiller({ id, is_killer: true });
+        setMsg(
+          els.killerMsg,
+          `已指定 ${data.name}（${data.id}）為犯人；抽籤改為手動模式`,
+          true
+        );
+        await refreshKillerAssignment();
+      } catch (err) {
+        setMsg(els.killerMsg, friendlyError(err), false);
+      } finally {
+        els.btnKillerSet.disabled = false;
+      }
+    });
+  }
+
+  if (els.btnKillerClear) {
+    els.btnKillerClear.addEventListener("click", async () => {
+      const id = (els.killerSelect.value || (currentKiller && currentKiller.id) || "").trim();
+      if (!id) {
+        setMsg(els.killerMsg, "請先選擇要清除的大使，或先指定一位犯人", false);
+        return;
+      }
+      const person = ambassadors.find((a) => String(a.id) === String(id));
+      const name = (person && person.name) || (currentKiller && currentKiller.name) || id;
+      if (!window.confirm(`確定清除「${name}」（${id}）的犯人指定？`)) return;
+      els.btnKillerClear.disabled = true;
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error("尚未登入");
+        await user.getIdToken(true);
+        const { data } = await setKiller({ id, is_killer: false });
+        setMsg(els.killerMsg, `已清除 ${data.name}（${data.id}）的犯人指定`, true);
+        await refreshKillerAssignment();
+      } catch (err) {
+        setMsg(els.killerMsg, friendlyError(err), false);
+      } finally {
+        els.btnKillerClear.disabled = false;
+      }
+    });
+  }
 
   els.poolForm.addEventListener("submit", async (e) => {
     e.preventDefault();

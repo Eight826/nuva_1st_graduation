@@ -72,7 +72,10 @@ match /ambassadors_secret/{id} {
 ### Collection 3: `system_config`（角色池庫存，Transaction 專用）
 
 * `role_pool.remaining`: `{ "大力士": 2, "品味家": 1, "判斷家": 1 }`（依比例預先設定的剩餘名額）
+* `killer.mode`: `"random"`（抽籤時機率判定）或 `"manual"`（後台指定犯人；`drawRole` 不再隨機抽兇手）
 * 扣庫存**只能透過 Cloud Function 內的 `runTransaction` 執行**，禁止前端直接寫入
+
+後台可呼叫 `setKiller` / `getKillerAssignment` 指定或清除犯人，**僅限 `is_attending == true` 的大使**；兇手身分仍只存在 `ambassadors_secret`。
 
 ### Collection 4: `checkin_codes`（防代抽驗證碼，取代不可靠的 device_id）
 

@@ -205,11 +205,29 @@ exports.drawRole = onCall({ cors: true }, async (request) => {
     const killerRemaining = Number(
       (config.killer && config.killer.remaining) || 0
     );
+    const killerMode =
+      (config.killer && config.killer.mode) === "manual" ? "manual" : "random";
+    const secret = secretSnap.exists ? secretSnap.data() || {} : {};
 
     const role = pickRole(remaining);
     remaining[role] = Number(remaining[role]) - 1;
 
-    const isKiller = decideKiller(killerRemaining, seatsRemaining);
+    // Manual mode: killer is designated by admin only; never roll at draw time.
+    // Also preserve a pre-assigned secret.is_killer if already set.
+    let isKiller;
+    let nextKillerRemaining = killerRemaining;
+    if (killerMode === "manual") {
+      isKiller = secret.is_killer === true;
+      nextKillerRemaining = killerRemaining;
+    } else if (secret.is_killer === true) {
+      isKiller = true;
+      nextKillerRemaining = killerRemaining;
+    } else {
+      isKiller = decideKiller(killerRemaining, seatsRemaining);
+      nextKillerRemaining = isKiller
+        ? Math.max(0, killerRemaining - 1)
+        : killerRemaining;
+    }
 
     tx.update(publicRef, {
       role,
@@ -238,7 +256,7 @@ exports.drawRole = onCall({ cors: true }, async (request) => {
         },
         killer: {
           ...(config.killer || {}),
-          remaining: isKiller ? Math.max(0, killerRemaining - 1) : killerRemaining,
+          remaining: nextKillerRemaining,
         },
       },
       { merge: true }
@@ -470,6 +488,128 @@ exports.exportPinRoster = onCall({ cors: true }, async (request) => {
 });
 
 /**
+ * getKillerAssignment — admin-only: who is currently designated as 兇手/犯人.
+ * Not exposed on the public listener (secret collection).
+ */
+exports.getKillerAssignment = onCall({ cors: true }, async (request) => {
+  assertAdmin(request);
+
+  const configSnap = await CONFIG_DOC.get();
+  const config = configSnap.exists ? configSnap.data() || {} : {};
+  const killer = config.killer || {};
+  const mode = killer.mode === "manual" ? "manual" : "random";
+
+  const secretSnap = await db
+    .collection("ambassadors_secret")
+    .where("is_killer", "==", true)
+    .get();
+
+  const killers = [];
+  for (const doc of secretSnap.docs) {
+    const publicSnap = await db.collection("ambassadors_public").doc(doc.id).get();
+    const p = publicSnap.exists ? publicSnap.data() || {} : {};
+    killers.push({
+      id: doc.id,
+      name: p.name || "",
+      is_attending: p.is_attending !== false,
+      is_drawn: !!p.is_drawn,
+      role: p.role || "",
+    });
+  }
+
+  killers.sort(
+    (a, b) => Number(a.id) - Number(b.id) || String(a.id).localeCompare(String(b.id))
+  );
+
+  return {
+    ok: true,
+    mode,
+    remaining: Number(killer.remaining || 0),
+    killers,
+    assigned_id: killer.assigned_id || (killers[0] && killers[0].id) || null,
+  };
+});
+
+/**
+ * setKiller — admin designates (or clears) the 犯人/兇手.
+ * Only physical attendees may be designated. Switches killer.mode to "manual"
+ * so drawRole will not randomly assign another killer.
+ */
+exports.setKiller = onCall({ cors: true }, async (request) => {
+  assertAdmin(request);
+  const id = normalizeId(request.data && request.data.id);
+  const makeKiller = !!(request.data && request.data.is_killer);
+  if (!id) {
+    throw new HttpsError("invalid-argument", "請提供大使編號");
+  }
+
+  const publicRef = db.collection("ambassadors_public").doc(id);
+  const secretRef = db.collection("ambassadors_secret").doc(id);
+
+  const publicSnap = await publicRef.get();
+  if (!publicSnap.exists) {
+    throw new HttpsError("not-found", "找不到此大使編號");
+  }
+  const ambassador = publicSnap.data() || {};
+  if (makeKiller && ambassador.is_attending === false) {
+    throw new HttpsError(
+      "failed-precondition",
+      "只能指定「實體出席」的大使為犯人"
+    );
+  }
+
+  const existingKillers = await db
+    .collection("ambassadors_secret")
+    .where("is_killer", "==", true)
+    .get();
+
+  const batch = db.batch();
+
+  // Single-killer game: clear any previous designation first.
+  for (const doc of existingKillers.docs) {
+    if (doc.id === id && makeKiller) continue;
+    batch.set(doc.ref, { is_killer: false }, { merge: true });
+  }
+
+  batch.set(
+    secretRef,
+    {
+      id,
+      is_killer: makeKiller,
+      role: ambassador.role || "",
+    },
+    { merge: true }
+  );
+
+  const configSnap = await CONFIG_DOC.get();
+  const config = configSnap.exists ? configSnap.data() || {} : {};
+  batch.set(
+    CONFIG_DOC,
+    {
+      killer: {
+        ...(config.killer || {}),
+        mode: "manual",
+        remaining: makeKiller ? 0 : Number((config.killer && config.killer.remaining) || 0),
+        assigned_id: makeKiller ? id : null,
+        assigned_name: makeKiller ? ambassador.name || "" : null,
+        updated_at: FieldValue.serverTimestamp(),
+      },
+    },
+    { merge: true }
+  );
+
+  await batch.commit();
+
+  return {
+    ok: true,
+    id,
+    name: ambassador.name || "",
+    is_killer: makeKiller,
+    mode: "manual",
+  };
+});
+
+/**
  * adjustRolePool — update role_pool.remaining and optional killer.remaining.
  */
 exports.adjustRolePool = onCall({ cors: true }, async (request) => {
@@ -630,6 +770,6 @@ exports.health = require("firebase-functions").https.onRequest((_req, res) => {
     ok: true,
     phase: 5,
     message:
-      "draw + admin ops + pin roster + restore-to-undrawn ready",
+      "draw + attendance + manual killer designation + admin ops ready",
   });
 });
