@@ -110,6 +110,9 @@ npx firebase-tools@latest deploy --only functions
 # 種子資料（匯入名單 + 產生 PIN）
 cd scripts && npm install && npm run seed
 
+# 依 attendees.csv 標記實體出席（不重發 PIN；建議加 --sync-pool）
+cd scripts && npm run mark-attendance -- --create-missing --sync-pool
+
 # 建立管理員
 cd scripts && npm run create-admin
 ```

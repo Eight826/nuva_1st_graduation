@@ -7,6 +7,7 @@
   },
   "scripts": {
     "seed": "node seed.js",
+    "mark-attendance": "node markAttendance.js",
     "create-admin": "node createAdmin.js"
   },
   "dependencies": {

@@ -49,8 +49,10 @@
 | `role` | string | 分發到的角色名稱 | `"大力士"` |
 | `is_drawn` | boolean | 是否已完成抽取/分發 | `true` |
 | `drawn_at` | timestamp | 抽籤分發時間 | `2026-07-22 10:00:00` |
+| `is_attending` | boolean | 是否登記參加實體活動（可抽籤） | `true` |
 
-**注意：此 Collection 不含 `is_killer` 或任何兇手判定相關欄位。**
+**注意：此 Collection 不含 `is_killer` 或任何兇手判定相關欄位。**  
+未出席（`is_attending == false`）者不可抽籤；已抽過者仍可回查結果。
 
 ### Collection 2: `ambassadors_secret`（前端完全無讀寫權限，僅 Cloud Function 用 Admin SDK 存取）
 

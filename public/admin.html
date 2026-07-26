@@ -149,10 +149,18 @@
           <p id="live-badge" class="text-xs text-mute">連線中…</p>
         </div>
 
-        <div class="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <div class="border border-line bg-panel px-4 py-4">
             <p class="text-xs text-mute">大使總數</p>
             <p id="stat-total" class="mt-2 text-2xl font-semibold">—</p>
+          </div>
+          <div class="border border-line bg-panel px-4 py-4">
+            <p class="text-xs text-mute">實體出席</p>
+            <p id="stat-attending" class="mt-2 text-2xl font-semibold text-brand">—</p>
+          </div>
+          <div class="border border-line bg-panel px-4 py-4">
+            <p class="text-xs text-mute">未出席</p>
+            <p id="stat-absent" class="mt-2 text-2xl font-semibold">—</p>
           </div>
           <div class="border border-line bg-panel px-4 py-4">
             <p class="text-xs text-mute">已抽取</p>
@@ -285,11 +293,19 @@
 
         <div>
           <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 class="mr-2 text-sm font-medium">大使資料總表</h3>
-              <button type="button" data-filter="all" class="filter-chip border border-brand bg-brand/20 px-2.5 py-1 text-xs text-white">全部</button>
-              <button type="button" data-filter="drawn" class="filter-chip border border-line px-2.5 py-1 text-xs text-mute hover:border-brand hover:text-white">已抽取</button>
-              <button type="button" data-filter="pending" class="filter-chip border border-line px-2.5 py-1 text-xs text-mute hover:border-brand hover:text-white">未抽取</button>
+            <div class="flex flex-col gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="mr-2 text-sm font-medium">大使資料總表</h3>
+                <button type="button" data-filter="all" class="filter-chip border border-brand bg-brand/20 px-2.5 py-1 text-xs text-white">全部</button>
+                <button type="button" data-filter="drawn" class="filter-chip border border-line px-2.5 py-1 text-xs text-mute hover:border-brand hover:text-white">已抽取</button>
+                <button type="button" data-filter="pending" class="filter-chip border border-line px-2.5 py-1 text-xs text-mute hover:border-brand hover:text-white">未抽取</button>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="mr-1 text-xs text-mute">出席</span>
+                <button type="button" data-attendance="all" class="attendance-chip border border-brand bg-brand/20 px-2.5 py-1 text-xs text-white">全部</button>
+                <button type="button" data-attendance="attending" class="attendance-chip border border-line px-2.5 py-1 text-xs text-mute hover:border-brand hover:text-white">實體出席</button>
+                <button type="button" data-attendance="absent" class="attendance-chip border border-line px-2.5 py-1 text-xs text-mute hover:border-brand hover:text-white">未出席</button>
+              </div>
             </div>
             <input
               id="table-filter"
@@ -299,11 +315,12 @@
             />
           </div>
           <div class="overflow-x-auto border border-line">
-            <table class="w-full min-w-[640px] text-left text-sm">
+            <table class="w-full min-w-[720px] text-left text-sm">
               <thead class="bg-panel text-xs text-mute">
                 <tr>
                   <th class="px-4 py-3 font-medium">編號</th>
                   <th class="px-4 py-3 font-medium">姓名</th>
+                  <th class="px-4 py-3 font-medium">實體出席</th>
                   <th class="px-4 py-3 font-medium">角色</th>
                   <th class="px-4 py-3 font-medium">狀態</th>
                   <th class="px-4 py-3 font-medium">抽籤時間</th>
