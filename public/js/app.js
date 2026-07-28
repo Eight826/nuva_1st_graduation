@@ -3,6 +3,7 @@
     大力士: { bg: "#1E2A4A", fg: "#7FA8F5" },
     品味家: { bg: "#1B3B2A", fg: "#6FCB9F" },
     判斷家: { bg: "#3B2E1B", fg: "#E0B36F" },
+    工作人員: { bg: "#2A2A2A", fg: "#A3A3A3" },
   };
 
   /** Keep in sync with `.card-3d.is-spinning` animation duration in index.html */

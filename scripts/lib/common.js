@@ -109,6 +109,27 @@ function parseNameIdCsv(text) {
   return rows;
 }
 
+const STAFF_ROLE = "工作人員";
+const GAME_ROLES = ["大力士", "品味家", "判斷家"];
+const STAFF_CSV_PATH = path.join(__dirname, "..", "data", "staff.csv");
+
+/** Load fixed staff roster from scripts/data/staff.csv (empty if missing). */
+function loadStaffRows() {
+  if (!fs.existsSync(STAFF_CSV_PATH)) return [];
+  return parseNameIdCsv(fs.readFileSync(STAFF_CSV_PATH, "utf8"));
+}
+
+function loadStaffIds() {
+  return new Set(loadStaffRows().map((r) => r.id));
+}
+
+function isStaffRecord(data, staffIds) {
+  if (!data) return false;
+  if (data.is_staff === true) return true;
+  if (staffIds && staffIds.has(normalizeAmbassadorId(data.id))) return true;
+  return String(data.role || "").trim() === STAFF_ROLE;
+}
+
 /** Allocate remaining seats in 2:1:1 (大力士 : 品味家 : 判斷家). */
 function allocateRolePool(total) {
   const overrideStrong = process.env.ROLE_POOL_大力士;
@@ -133,8 +154,14 @@ function allocateRolePool(total) {
 module.exports = {
   ROOT,
   PROJECT_ID,
+  STAFF_ROLE,
+  GAME_ROLES,
+  STAFF_CSV_PATH,
   createDb,
   normalizeAmbassadorId,
   parseNameIdCsv,
+  loadStaffRows,
+  loadStaffIds,
+  isStaffRecord,
   allocateRolePool,
 };

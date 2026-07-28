@@ -1,9 +1,10 @@
 (() => {
-  const ROLE_ORDER = ["大力士", "品味家", "判斷家"];
+  const ROLE_ORDER = ["大力士", "品味家", "判斷家", "工作人員"];
   const ROLE_COLORS = {
     大力士: "#7FA8F5",
     品味家: "#6FCB9F",
     判斷家: "#E0B36F",
+    工作人員: "#A3A3A3",
   };
 
   const config = window.firebaseConfig;
@@ -102,6 +103,10 @@
     return a && a.is_attending !== false;
   }
 
+  function isStaff(a) {
+    return !!(a && a.is_staff === true);
+  }
+
   function showView(name) {
     Object.entries(views).forEach(([key, el]) => {
       el.classList.toggle("hidden", key !== name);
@@ -173,10 +178,13 @@
     const total = ambassadors.length;
     const attendingList = ambassadors.filter(isAttending);
     const attending = attendingList.length;
-    const drawnList = ambassadors.filter((a) => a.is_drawn);
+    const staffList = ambassadors.filter(isStaff);
+    const drawnList = ambassadors.filter((a) => a.is_drawn && !isStaff(a));
     const drawn = drawnList.length;
-    // Pending draws only count physical attendees (non-attendees cannot draw).
-    const pendingAttending = attendingList.filter((a) => !a.is_drawn).length;
+    // Pending draws only count physical attendees who can still draw (non-staff).
+    const pendingAttending = attendingList.filter(
+      (a) => !a.is_drawn && !isStaff(a)
+    ).length;
     els.statTotal.textContent = String(total);
     if (els.statAttending) els.statAttending.textContent = String(attending);
     if (els.statAbsent) els.statAbsent.textContent = String(total - attending);
@@ -189,8 +197,8 @@
       killerRemaining === null || killerRemaining === undefined ? "—" : String(killerRemaining);
 
     const drawnByRole = {};
-    for (const a of drawnList) {
-      const role = a.role || "未命名";
+    for (const a of [...drawnList, ...staffList]) {
+      const role = a.role || (isStaff(a) ? "工作人員" : "未命名");
       drawnByRole[role] = (drawnByRole[role] || 0) + 1;
     }
 
@@ -206,8 +214,11 @@
     els.roleStats.innerHTML = roles
       .map((role) => {
         const got = drawnByRole[role] || 0;
-        const left = Number(remaining[role] ?? 0);
-        const init = Number(initial[role] ?? got + left);
+        const left = role === "工作人員" ? 0 : Number(remaining[role] ?? 0);
+        const init =
+          role === "工作人員"
+            ? got
+            : Number(initial[role] ?? got + left);
         const pct = init > 0 ? Math.min(100, Math.round((got / init) * 100)) : 0;
         const color = ROLE_COLORS[role] || "#3B6FE8";
         return `
@@ -244,28 +255,34 @@
     els.tableBody.innerHTML = rows
       .map((a) => {
         const attending = isAttending(a);
+        const staff = isStaff(a);
         const attendance = attending
           ? '<span class="text-brand">出席</span>'
           : '<span class="text-mute">未出席</span>';
-        const status = a.is_drawn
-          ? '<span class="text-brand">已抽取</span>'
-          : attending
-            ? '<span class="text-mute">未抽取</span>'
-            : '<span class="text-mute">不可抽籤</span>';
-        const actionCell = a.is_drawn
-          ? `<button
+        const status = staff
+          ? '<span class="text-mute">工作人員</span>'
+          : a.is_drawn
+            ? '<span class="text-brand">已抽取</span>'
+            : attending
+              ? '<span class="text-mute">未抽取</span>'
+              : '<span class="text-mute">不可抽籤</span>';
+        const roleLabel = a.is_drawn || staff ? a.role || (staff ? "工作人員" : "—") : "—";
+        const actionCell = staff
+          ? '<span class="text-xs text-mute">固定身分</span>'
+          : a.is_drawn
+            ? `<button
                 type="button"
                 data-reset-id="${a.id}"
                 data-reset-name="${a.name || ""}"
                 class="btn-reset border border-brand/50 px-2 py-1 text-xs text-brand hover:bg-brand/10"
               >恢復未抽取</button>`
-          : '<span class="text-xs text-mute">—</span>';
+            : '<span class="text-xs text-mute">—</span>';
         return `
           <tr class="hover:bg-panel/60">
             <td class="px-4 py-3 font-mono text-xs">${a.id}</td>
             <td class="px-4 py-3">${a.name || ""}</td>
             <td class="px-4 py-3">${attendance}</td>
-            <td class="px-4 py-3">${a.is_drawn ? a.role || "—" : "—"}</td>
+            <td class="px-4 py-3">${roleLabel}</td>
             <td class="px-4 py-3">${status}</td>
             <td class="px-4 py-3 text-xs text-mute">${formatTime(a.drawn_at)}</td>
             <td class="px-4 py-3">${actionCell}</td>
@@ -277,6 +294,9 @@
   async function restoreAmbassadorById(id, nameHint = "") {
     const person = ambassadors.find((a) => String(a.id) === String(id));
     const name = nameHint || (person && person.name) || id;
+    if (person && isStaff(person)) {
+      throw new Error("工作人員為固定身分，無法重置");
+    }
     const appearsDrawn = person
       ? person.is_drawn === true || !!(person.role && String(person.role).trim())
       : true;
@@ -306,7 +326,10 @@
   function fillKillerSelect() {
     if (!els.killerSelect) return;
     const selected = els.killerSelect.value;
-    const attending = ambassadors.filter(isAttending).slice().sort(numericIdSort);
+    const attending = ambassadors
+      .filter((a) => isAttending(a) && !isStaff(a))
+      .slice()
+      .sort(numericIdSort);
     const options = [
       '<option value="">請選擇…</option>',
       ...attending.map(

@@ -8,6 +8,7 @@
   "scripts": {
     "seed": "node seed.js",
     "mark-attendance": "node markAttendance.js",
+    "mark-staff": "node markStaff.js",
     "create-admin": "node createAdmin.js"
   },
   "dependencies": {

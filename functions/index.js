@@ -13,6 +13,8 @@ setGlobalOptions({ region: "asia-east1" });
 
 const db = getFirestore();
 const CONFIG_DOC = db.collection("system_config").doc("main");
+const STAFF_ROLE = "工作人員";
+const GAME_ROLES = ["大力士", "品味家", "判斷家"];
 
 /** Normalize numeric ids so "002" and "2" resolve to the same doc. */
 function normalizeId(raw) {
@@ -22,12 +24,25 @@ function normalizeId(raw) {
   return s;
 }
 
+function isStaff(ambassador) {
+  return !!(ambassador && ambassador.is_staff === true);
+}
+
 function assertAttending(ambassador) {
   // Legacy docs without the field are treated as attending (backward compatible).
   if (ambassador && ambassador.is_attending === false) {
     throw new HttpsError(
       "failed-precondition",
       "此大使未登記參加實體活動，無法抽籤。如有疑問請聯絡管理員"
+    );
+  }
+}
+
+function assertNotStaff(ambassador, actionLabel) {
+  if (isStaff(ambassador)) {
+    throw new HttpsError(
+      "failed-precondition",
+      `工作人員為固定身分，無法${actionLabel}`
     );
   }
 }
@@ -87,6 +102,7 @@ function publicPayload(ambassador, extra = {}) {
     is_drawn: !!ambassador.is_drawn,
     drawn_at: ambassador.drawn_at || null,
     is_attending: ambassador.is_attending !== false,
+    is_staff: isStaff(ambassador),
     ...extra,
   };
 }
@@ -119,6 +135,18 @@ exports.verifyCheckin = onCall({ cors: true }, async (request) => {
   }
   if (normalizePin(code.pin) !== pin) {
     throw new HttpsError("permission-denied", "報到 PIN 錯誤");
+  }
+
+  // Fixed staff: always show 工作人員, never enter draw flow.
+  if (isStaff(ambassador)) {
+    return {
+      status: "already_drawn",
+      ...publicPayload({
+        ...ambassador,
+        role: ambassador.role || STAFF_ROLE,
+        is_drawn: true,
+      }),
+    };
   }
 
   if (ambassador.is_drawn) {
@@ -181,6 +209,18 @@ exports.drawRole = onCall({ cors: true }, async (request) => {
     }
     if (normalizePin(code.pin) !== pin) {
       throw new HttpsError("permission-denied", "報到 PIN 錯誤");
+    }
+
+    // Fixed staff never enter the game role pool.
+    if (isStaff(ambassador)) {
+      return publicPayload(
+        {
+          ...ambassador,
+          role: ambassador.role || STAFF_ROLE,
+          is_drawn: true,
+        },
+        { status: "already_drawn" }
+      );
     }
 
     // Idempotent: already drawn → return existing role, never re-roll
@@ -356,6 +396,8 @@ exports.resetAmbassador = onCall({ cors: true }, async (request) => {
       }
 
       const ambassador = publicSnap.data() || {};
+      assertNotStaff(ambassador, "重置");
+
       const secret = secretSnap.exists ? secretSnap.data() || {} : {};
       const config = configSnap.exists ? configSnap.data() || {} : {};
       const remaining = {
@@ -371,7 +413,8 @@ exports.resetAmbassador = onCall({ cors: true }, async (request) => {
         throw new HttpsError("failed-precondition", "此大使目前沒有可清除的身份");
       }
 
-      if (previousRole) {
+      // Only restore inventory for game roles (never invent a 工作人員 pool seat).
+      if (previousRole && GAME_ROLES.includes(previousRole)) {
         remaining[previousRole] = Number(remaining[previousRole] || 0) + 1;
       }
       if (wasKiller) {
@@ -385,6 +428,7 @@ exports.resetAmbassador = onCall({ cors: true }, async (request) => {
           name: ambassador.name || "",
           role: "",
           is_drawn: false,
+          is_staff: false,
           drawn_at: FieldValue.delete(),
           // Preserve attendance; default true only when field was never set.
           is_attending:
@@ -556,6 +600,9 @@ exports.setKiller = onCall({ cors: true }, async (request) => {
       "failed-precondition",
       "只能指定「實體出席」的大使為犯人"
     );
+  }
+  if (makeKiller) {
+    assertNotStaff(ambassador, "指定為犯人");
   }
 
   const existingKillers = await db

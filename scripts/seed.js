@@ -11,6 +11,7 @@
  *   - ambassadors.csv (id,name) — preferred
  *   - falls back to 大使名單-工作表1.csv (編號,姓名)
  *   - optional attendees.csv — marks is_attending (實體出席)
+ *   - optional staff.csv — fixed 工作人員 (is_staff, no game draw seats)
  *
  * Writes:
  *   - ambassadors_public / ambassadors_secret / checkin_codes / system_config
@@ -28,6 +29,8 @@ const {
   createDb,
   parseNameIdCsv,
   allocateRolePool,
+  loadStaffIds,
+  STAFF_ROLE,
 } = require("./lib/common");
 
 const PIN_LENGTH = 6;
@@ -74,12 +77,17 @@ async function main() {
   }
 
   const attendingIds = loadAttendingIds();
+  const staffIds = loadStaffIds();
   const attendingCount = attendingIds
     ? ambassadors.filter((a) => attendingIds.has(a.id)).length
     : ambassadors.length;
+  const drawSeatCount = ambassadors.filter((a) => {
+    const attending = attendingIds ? attendingIds.has(a.id) : true;
+    return attending && !staffIds.has(a.id);
+  }).length;
 
-  // Pool seats follow who will actually draw (physical attendees when listed).
-  const rolePool = allocateRolePool(attendingCount);
+  // Pool seats follow who will actually draw (attending non-staff).
+  const rolePool = allocateRolePool(drawSeatCount);
   const poolSum = rolePool.大力士 + rolePool.品味家 + rolePool.判斷家;
   console.log(`Ambassadors: ${ambassadors.length} (from ${path.basename(csvPath)})`);
   if (attendingIds) {
@@ -87,10 +95,13 @@ async function main() {
   } else {
     console.log("No attendees.csv — treating all ambassadors as attending");
   }
+  if (staffIds.size) {
+    console.log(`Staff (staff.csv): ${staffIds.size} → draw seats: ${drawSeatCount}`);
+  }
   console.log(`Role pool (2:1:1):`, rolePool, `sum=${poolSum}`);
-  if (poolSum !== attendingCount) {
+  if (poolSum !== drawSeatCount) {
     console.warn(
-      `Warning: role pool sum (${poolSum}) != attending count (${attendingCount})`
+      `Warning: role pool sum (${poolSum}) != draw seat count (${drawSeatCount})`
     );
   }
 
@@ -111,6 +122,7 @@ async function main() {
   for (const { id, name } of ambassadors) {
     const pin = generatePin(pinUsed);
     const isAttending = attendingIds ? attendingIds.has(id) : true;
+    const isStaff = staffIds.has(id);
     const publicRef = db.collection("ambassadors_public").doc(id);
     const secretRef = db.collection("ambassadors_secret").doc(id);
     const codeRef = db.collection("checkin_codes").doc(id);
@@ -118,15 +130,16 @@ async function main() {
     batch.set(publicRef, {
       id,
       name,
-      role: "",
-      is_drawn: false,
-      drawn_at: null,
+      role: isStaff ? STAFF_ROLE : "",
+      is_drawn: isStaff,
+      drawn_at: isStaff ? FieldValue.serverTimestamp() : null,
       is_attending: isAttending,
+      is_staff: isStaff,
     });
     batch.set(secretRef, {
       id,
       is_killer: false,
-      role: "",
+      role: isStaff ? STAFF_ROLE : "",
     });
     batch.set(codeRef, {
       ambassador_id: id,
@@ -134,7 +147,13 @@ async function main() {
       used: false,
     });
     ops += 3;
-    roster.push({ id, name, pin, is_attending: isAttending });
+    roster.push({
+      id,
+      name,
+      pin,
+      is_attending: isAttending,
+      is_staff: isStaff,
+    });
     await commitIfNeeded(false);
   }
 
@@ -151,14 +170,19 @@ async function main() {
     seeded_at: FieldValue.serverTimestamp(),
     ambassador_count: ambassadors.length,
     attending_count: attendingCount,
+    draw_seat_count: drawSeatCount,
+    staff_count: staffIds.size,
   });
   ops += 1;
   await commitIfNeeded(true);
 
   const rosterCsv = [
-    "編號,姓名,PIN,實體出席",
+    "編號,姓名,PIN,實體出席,工作人員",
     ...roster.map(
-      (r) => `${r.id},${r.name},${r.pin},${r.is_attending ? "是" : "否"}`
+      (r) =>
+        `${r.id},${r.name},${r.pin},${r.is_attending ? "是" : "否"},${
+          r.is_staff ? "是" : "否"
+        }`
     ),
   ].join("\n");
   const rosterTxt = [
@@ -166,10 +190,14 @@ async function main() {
     `專案: ${PROJECT_ID}`,
     `人數: ${roster.length}`,
     `實體出席: ${attendingCount}`,
+    `工作人員: ${staffIds.size}`,
+    `可抽籤名額: ${drawSeatCount}`,
     "",
     ...roster.map(
       (r) =>
-        `${r.id}\t${r.name}\tPIN=${r.pin}\t出席=${r.is_attending ? "是" : "否"}`
+        `${r.id}\t${r.name}\tPIN=${r.pin}\t出席=${r.is_attending ? "是" : "否"}\t工作人員=${
+          r.is_staff ? "是" : "否"
+        }`
     ),
   ].join("\n");
 

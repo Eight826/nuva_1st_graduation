@@ -5,6 +5,7 @@
  * - Everyone else in ambassadors_public → is_attending: false
  * - Missing attendees can be created with a new PIN (--create-missing)
  * - Optionally resize role_pool to match attending seats (--sync-pool)
+ * - staff.csv 工作人員 keep is_staff / role and do not consume draw seats
  *
  * Usage:
  *   cd scripts && npm run mark-attendance
@@ -20,6 +21,10 @@ const {
   normalizeAmbassadorId,
   parseNameIdCsv,
   allocateRolePool,
+  loadStaffIds,
+  STAFF_ROLE,
+  GAME_ROLES,
+  isStaffRecord,
 } = require("./lib/common");
 
 const PIN_LENGTH = 6;
@@ -62,6 +67,7 @@ async function main() {
 
   const attendingIds = new Set(attendees.map((a) => a.id));
   const attendeeById = new Map(attendees.map((a) => [a.id, a.name]));
+  const staffIds = loadStaffIds();
 
   const [publicSnap, codeSnap] = await Promise.all([
     db.collection("ambassadors_public").get(),
@@ -109,18 +115,20 @@ async function main() {
   if (createMissing) {
     for (const { id, name } of missing) {
       const pin = generatePin(usedPins);
+      const isStaff = staffIds.has(id);
       batch.set(db.collection("ambassadors_public").doc(id), {
         id,
         name,
-        role: "",
-        is_drawn: false,
-        drawn_at: null,
+        role: isStaff ? STAFF_ROLE : "",
+        is_drawn: isStaff,
+        drawn_at: isStaff ? FieldValue.serverTimestamp() : null,
         is_attending: true,
+        is_staff: isStaff,
       });
       batch.set(db.collection("ambassadors_secret").doc(id), {
         id,
         is_killer: false,
-        role: "",
+        role: isStaff ? STAFF_ROLE : "",
       });
       batch.set(db.collection("checkin_codes").doc(id), {
         ambassador_id: id,
@@ -133,7 +141,13 @@ async function main() {
       existing.set(id, {
         ref: db.collection("ambassadors_public").doc(id),
         id,
-        data: { name, is_attending: true, is_drawn: false },
+        data: {
+          name,
+          is_attending: true,
+          is_drawn: isStaff,
+          is_staff: isStaff,
+          role: isStaff ? STAFF_ROLE : "",
+        },
       });
       await flush(false);
     }
@@ -141,43 +155,59 @@ async function main() {
 
   // Update attendance flags for everyone currently in the map.
   // Always write so legacy docs without the field get a concrete boolean.
+  // Staff keep fixed role / is_staff / is_drawn.
   let markedTrue = 0;
   let markedFalse = 0;
   for (const [id, row] of existing.entries()) {
     const shouldAttend = attendingIds.has(id);
-    batch.set(
-      row.ref,
-      {
-        id,
-        name: shouldAttend
-          ? attendeeById.get(id) || row.data.name || ""
-          : row.data.name || "",
-        is_attending: shouldAttend,
-      },
-      { merge: true }
-    );
+    const staff = isStaffRecord({ ...row.data, id }, staffIds);
+    const patch = {
+      id,
+      name: shouldAttend
+        ? attendeeById.get(id) || row.data.name || ""
+        : row.data.name || "",
+      is_attending: shouldAttend,
+    };
+    if (staff) {
+      patch.is_staff = true;
+      patch.role = STAFF_ROLE;
+      patch.is_drawn = true;
+      if (!row.data.drawn_at) patch.drawn_at = FieldValue.serverTimestamp();
+    }
+    batch.set(row.ref, patch, { merge: true });
     ops += 1;
     if (shouldAttend) markedTrue += 1;
     else markedFalse += 1;
     // Keep in-memory snapshot accurate for --sync-pool.
     row.data.is_attending = shouldAttend;
+    if (staff) {
+      row.data.is_staff = true;
+      row.data.role = STAFF_ROLE;
+      row.data.is_drawn = true;
+    }
     await flush(false);
   }
 
   if (syncPool) {
-    // Role pool seats = attending ambassadors who still need a role,
-    // plus keep already-drawn attending roles accounted in initial.
+    // Role pool seats = attending non-staff who still need a role,
+    // plus keep already-drawn attending game roles accounted in initial.
     const attendingRows = [...existing.values()].filter((r) =>
       attendingIds.has(r.id)
     );
-    const undrawnAttending = attendingRows.filter(
+    const drawRows = attendingRows.filter(
+      (r) => !isStaffRecord({ ...r.data, id: r.id }, staffIds)
+    );
+    const undrawnAttending = drawRows.filter(
       (r) => !(r.data.is_drawn === true || String(r.data.role || "").trim())
     ).length;
     const drawnByRole = {};
-    for (const r of attendingRows) {
+    for (const role of GAME_ROLES) drawnByRole[role] = 0;
+    for (const r of drawRows) {
       if (r.data.is_drawn && r.data.role) {
         const role = String(r.data.role);
-        drawnByRole[role] = (drawnByRole[role] || 0) + 1;
+        if (GAME_ROLES.includes(role)) {
+          drawnByRole[role] = (drawnByRole[role] || 0) + 1;
+        }
       }
     }
     const remaining = allocateRolePool(undrawnAttending);
@@ -191,14 +221,18 @@ async function main() {
       {
         role_pool: { remaining, initial },
         attending_count: attendingIds.size,
+        draw_seat_count: drawRows.length,
+        staff_count: staffIds.size,
         ambassador_count: existing.size,
         attendance_marked_at: FieldValue.serverTimestamp(),
       },
       { merge: true }
     );
     ops += 1;
-    console.log("\nSynced role pool to attending seats:");
-    console.log(`  attending=${attendingIds.size}, undrawn=${undrawnAttending}`);
+    console.log("\nSynced role pool to attending draw seats:");
+    console.log(
+      `  attending=${attendingIds.size}, draw_seats=${drawRows.length}, undrawn=${undrawnAttending}, staff=${staffIds.size}`
+    );
     console.log(`  remaining=`, remaining);
     console.log(`  initial=`, initial);
   } else {
@@ -207,6 +241,7 @@ async function main() {
       {
         attending_count: attendingIds.size,
         ambassador_count: existing.size,
+        staff_count: staffIds.size,
         attendance_marked_at: FieldValue.serverTimestamp(),
       },
       { merge: true }
