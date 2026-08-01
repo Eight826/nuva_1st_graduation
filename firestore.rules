@@ -22,9 +22,26 @@ service cloud.firestore {
     }
 
     // Role pool + killer quota: admin read, Admin SDK write
+    // puzzle.answers lives here too — never expose full config to clients
     match /system_config/{docId} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    // Puzzle groups: client read for live progress sync; writes only via Admin SDK
+    match /groups/{groupId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Code → group_id index: Admin SDK only (join looks up via Functions)
+    match /group_codes/{code} {
+      allow read, write: if false;
+    }
+
+    // Player session tokens: Admin SDK only
+    match /puzzle_sessions/{token} {
+      allow read, write: if false;
     }
   }
 }

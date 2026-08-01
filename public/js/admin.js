@@ -24,6 +24,26 @@
   const exportFinalRoster = functions.httpsCallable("exportFinalRoster");
   const getKillerAssignment = functions.httpsCallable("getKillerAssignment");
   const setKiller = functions.httpsCallable("setKiller");
+  const initPuzzleGroups = functions.httpsCallable("initPuzzleGroups");
+  const unlockOpening = functions.httpsCallable("unlockOpening");
+  const unlockFinale = functions.httpsCallable("unlockFinale");
+  const listPuzzleGroups = functions.httpsCallable("listPuzzleGroups");
+  const passAct2Role = functions.httpsCallable("passAct2Role");
+  const designateSilencersAndUnlockAct4 = functions.httpsCallable(
+    "designateSilencersAndUnlockAct4"
+  );
+  const adminMoveMember = functions.httpsCallable("adminMoveMember");
+
+  const ACT_LABEL = {
+    lobby: "組隊",
+    opening: "開場",
+    act1: "第一幕",
+    act2: "第二幕",
+    act3: "第三幕",
+    act4: "第四幕",
+    waiting: "等待終場",
+    finale: "終場",
+  };
 
   const views = {
     login: document.getElementById("view-login"),
@@ -83,14 +103,42 @@
     btnKillerSet: document.getElementById("btn-killer-set"),
     btnKillerClear: document.getElementById("btn-killer-clear"),
     killerMsg: document.getElementById("killer-msg"),
+    puzzleUnlockBadge: document.getElementById("puzzle-unlock-badge"),
+    puzzleAct4Badge: document.getElementById("puzzle-act4-badge"),
+    puzzleFinaleBadge: document.getElementById("puzzle-finale-badge"),
+    puzzleSilencers: document.getElementById("puzzle-silencers"),
+    puzzleMsg: document.getElementById("puzzle-msg"),
+    btnInitGroups: document.getElementById("btn-init-groups"),
+    btnResetGroups: document.getElementById("btn-reset-groups"),
+    btnUnlockOpening: document.getElementById("btn-unlock-opening"),
+    btnLockOpening: document.getElementById("btn-lock-opening"),
+    btnUnlockFinale: document.getElementById("btn-unlock-finale"),
+    btnLockFinale: document.getElementById("btn-lock-finale"),
+    silencerGroup: document.getElementById("silencer-group"),
+    btnDesignateSilencers: document.getElementById("btn-designate-silencers"),
+    btnRefreshGroups: document.getElementById("btn-refresh-groups"),
+    groupsBody: document.getElementById("groups-body"),
+    groupsEmpty: document.getElementById("groups-empty"),
+    moveForm: document.getElementById("move-form"),
+    moveId: document.getElementById("move-id"),
+    moveGroup: document.getElementById("move-group"),
+    btnMove: document.getElementById("btn-move"),
+    btnRemoveMember: document.getElementById("btn-remove-member"),
   };
 
   /** @type {Array<Record<string, any>>} */
   let ambassadors = [];
   /** @type {Record<string, any> | null} */
   let systemConfig = null;
+  /** @type {Array<Record<string, any>>} */
+  let puzzleGroups = [];
+  let openingUnlocked = false;
+  let act4Unlocked = false;
+  let finaleUnlocked = false;
+  let silencers = [];
   let unsubPublic = null;
   let unsubConfig = null;
+  let unsubGroups = null;
   let latestPin = "";
   /** @type {"all"|"drawn"|"pending"} */
   let statusFilter = "all";
@@ -111,6 +159,65 @@
     Object.entries(views).forEach(([key, el]) => {
       el.classList.toggle("hidden", key !== name);
     });
+  }
+
+  const TAB_IDS = ["checkin", "ambassadors", "puzzle"];
+  const TAB_HASH = {
+    checkin: "checkin",
+    ambassadors: "ambassadors",
+    puzzle: "puzzle",
+  };
+  const HASH_TO_TAB = {
+    checkin: "checkin",
+    ambassadors: "ambassadors",
+    puzzle: "puzzle",
+  };
+
+  /** @type {"checkin"|"ambassadors"|"puzzle"} */
+  let activeTab = "checkin";
+
+  function tabFromHash() {
+    const raw = (location.hash || "").replace(/^#/, "").trim().toLowerCase();
+    return HASH_TO_TAB[raw] || "checkin";
+  }
+
+  /**
+   * @param {"checkin"|"ambassadors"|"puzzle"} tab
+   * @param {{ syncHash?: boolean, scroll?: boolean }} [opts]
+   */
+  function setActiveTab(tab, opts = {}) {
+    const next = TAB_IDS.includes(tab) ? tab : "checkin";
+    const syncHash = opts.syncHash !== false;
+    const scroll = opts.scroll !== false;
+    activeTab = next;
+
+    document.querySelectorAll("[data-tab-panel]").forEach((panel) => {
+      const on = panel.getAttribute("data-tab-panel") === next;
+      panel.classList.toggle("hidden", !on);
+      if (on) panel.removeAttribute("hidden");
+      else panel.setAttribute("hidden", "");
+    });
+
+    document.querySelectorAll(".admin-tab").forEach((btn) => {
+      const on = btn.getAttribute("data-tab") === next;
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+      btn.classList.toggle("border-brand", on);
+      btn.classList.toggle("text-white", on);
+      btn.classList.toggle("font-medium", on);
+      btn.classList.toggle("border-transparent", !on);
+      btn.classList.toggle("text-mute", !on);
+    });
+
+    if (syncHash) {
+      const desired = `#${TAB_HASH[next]}`;
+      if (location.hash !== desired) {
+        history.replaceState(null, "", desired);
+      }
+    }
+
+    if (scroll) {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
   }
 
   function setError(el, message) {
@@ -381,6 +488,125 @@
     renderStats();
     renderTable();
     fillKillerSelect();
+    if (systemConfig && systemConfig.puzzle) {
+      openingUnlocked = systemConfig.puzzle.openingUnlocked === true;
+      if (els.puzzleUnlockBadge) {
+        els.puzzleUnlockBadge.textContent = openingUnlocked
+          ? "開場：已解鎖"
+          : "開場：未解鎖";
+        els.puzzleUnlockBadge.className = openingUnlocked
+          ? "text-xs text-brand"
+          : "text-xs text-mute";
+      }
+    }
+  }
+
+  function renderGroups() {
+    if (!els.groupsBody) return;
+    const rows = puzzleGroups.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    els.groupsEmpty.classList.toggle("hidden", rows.length > 0);
+
+    if (els.moveGroup) {
+      const current = els.moveGroup.value;
+      els.moveGroup.innerHTML =
+        '<option value="">選擇 G01–G15</option>' +
+        rows.map((g) => `<option value="${g.id}">${g.id}（${g.code}）</option>`).join("");
+      els.moveGroup.value = current;
+    }
+
+    if (els.silencerGroup) {
+      const current = els.silencerGroup.value;
+      els.silencerGroup.innerHTML =
+        '<option value="">選擇組別</option>' +
+        rows
+          .map((g) => {
+            const n = (g.members || []).length;
+            return `<option value="${g.id}">${g.id}（${g.code} · ${n}/4）</option>`;
+          })
+          .join("");
+      els.silencerGroup.value = current;
+    }
+
+    els.groupsBody.innerHTML = rows
+      .map((g) => {
+        const act2 = g.act2 || {};
+        const lights = ["品味家", "判斷家", "大力士"]
+          .map((r) => {
+            const ok = !!act2[r];
+            return `<span class="${ok ? "text-brand" : "text-mute"}">${r.slice(0, 1)}${
+              ok ? "✓" : "·"
+            }</span>`;
+          })
+          .join(" ");
+        const members = (g.members || [])
+          .map((m) => `${m.name || m.id}(${m.role})`)
+          .join("、") || "—";
+        const rank =
+          g.act4 && g.act4.rank != null ? ` · #${g.act4.rank}` : "";
+        const passBtns = ["品味家", "判斷家", "大力士"]
+          .map((r) => {
+            const ok = !!act2[r];
+            const short = r === "品味家" ? "品味" : r === "判斷家" ? "判斷" : "大力";
+            return `<button
+                type="button"
+                data-pass-group="${g.id}"
+                data-pass-role="${r}"
+                class="border border-line px-2 py-1 text-xs ${
+                  ok ? "text-mute" : "text-brand hover:border-brand"
+                }"
+                ${ok ? "disabled" : ""}
+              >${ok ? `${short}已過` : `${short}通過`}</button>`;
+          })
+          .join("");
+        return `
+          <tr class="hover:bg-ink/40">
+            <td class="px-3 py-2 font-mono text-xs">${g.id}</td>
+            <td class="px-3 py-2 font-mono tracking-widest text-brand">${g.code || ""}</td>
+            <td class="px-3 py-2">${(g.members || []).length}/4</td>
+            <td class="px-3 py-2 text-xs text-mute max-w-[220px]">${members}</td>
+            <td class="px-3 py-2">${ACT_LABEL[g.currentAct] || g.currentAct || "—"}${rank}</td>
+            <td class="px-3 py-2 text-xs">${lights}</td>
+            <td class="px-3 py-2">
+              <div class="flex flex-wrap gap-1">${passBtns}</div>
+            </td>
+          </tr>`;
+      })
+      .join("");
+  }
+
+  async function refreshPuzzleGroups() {
+    if (!els.groupsBody) return;
+    try {
+      const { data } = await listPuzzleGroups({});
+      puzzleGroups = data.groups || [];
+      openingUnlocked = !!data.openingUnlocked;
+      act4Unlocked = !!data.act4Unlocked;
+      finaleUnlocked = !!data.finaleUnlocked;
+      silencers = Array.isArray(data.silencers) ? data.silencers : [];
+      if (els.puzzleUnlockBadge) {
+        els.puzzleUnlockBadge.textContent = openingUnlocked
+          ? "開場：已解鎖"
+          : "開場：未解鎖";
+      }
+      if (els.puzzleAct4Badge) {
+        els.puzzleAct4Badge.textContent = act4Unlocked
+          ? "第四幕：已解鎖"
+          : "第四幕：未解鎖";
+      }
+      if (els.puzzleFinaleBadge) {
+        els.puzzleFinaleBadge.textContent = finaleUnlocked
+          ? "終場：已解鎖"
+          : "終場：未解鎖";
+      }
+      if (els.puzzleSilencers) {
+        els.puzzleSilencers.textContent = silencers.length
+          ? `封口者：${silencers.join("、")}`
+          : "封口者：尚未指定";
+      }
+      renderGroups();
+    } catch (err) {
+      setMsg(els.puzzleMsg, friendlyError(err), false);
+    }
   }
 
   function stopListeners() {
@@ -391,6 +617,10 @@
     if (unsubConfig) {
       unsubConfig();
       unsubConfig = null;
+    }
+    if (unsubGroups) {
+      unsubGroups();
+      unsubGroups = null;
     }
   }
 
@@ -427,6 +657,28 @@
           els.liveBadge.classList.remove("text-brand");
         }
       );
+
+    unsubGroups = db.collection("groups").onSnapshot(
+      (snap) => {
+        puzzleGroups = snap.docs.map((doc) => {
+          const d = doc.data() || {};
+          return {
+            id: doc.id,
+            code: d.code || "",
+            members: d.members || [],
+            slots: d.slots || {},
+            currentAct: d.currentAct || "lobby",
+            act2: d.act2 || {},
+            memberCount: (d.members || []).length,
+          };
+        });
+        renderGroups();
+      },
+      (err) => {
+        console.error(err);
+        setMsg(els.puzzleMsg, "小組即時更新失敗：" + friendlyError(err), false);
+      }
+    );
   }
 
   async function promoteIfAllowed(user) {
@@ -455,8 +707,10 @@
     els.adminEmail.textContent = user.email || "";
     els.adminEmail.classList.remove("hidden");
     showView("dashboard");
+    setActiveTab(tabFromHash(), { syncHash: true, scroll: false });
     startListeners();
     refreshKillerAssignment();
+    refreshPuzzleGroups();
   }
 
   function downloadCsv(filename, csv) {
@@ -527,6 +781,18 @@
   els.btnLogout.addEventListener("click", logout);
   els.btnDeniedLogout.addEventListener("click", logout);
   els.tableFilter.addEventListener("input", renderTable);
+
+  document.querySelectorAll(".admin-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.getAttribute("data-tab") || "checkin";
+      setActiveTab(tab, { syncHash: true, scroll: true });
+    });
+  });
+
+  window.addEventListener("hashchange", () => {
+    if (views.dashboard.classList.contains("hidden")) return;
+    setActiveTab(tabFromHash(), { syncHash: false, scroll: true });
+  });
 
   els.tableBody.addEventListener("click", async (e) => {
     const btn = e.target.closest("[data-reset-id]");
@@ -719,4 +985,190 @@
       els.btnPinCopy.textContent = "複製失敗";
     }
   });
+
+  if (els.btnInitGroups) {
+    els.btnInitGroups.addEventListener("click", async () => {
+      els.btnInitGroups.disabled = true;
+      try {
+        const { data } = await initPuzzleGroups({ resetMembers: false });
+        setMsg(els.puzzleMsg, `已確保 ${data.groups.length} 組`, true);
+        await refreshPuzzleGroups();
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      } finally {
+        els.btnInitGroups.disabled = false;
+      }
+    });
+  }
+
+  if (els.btnResetGroups) {
+    els.btnResetGroups.addEventListener("click", async () => {
+      if (
+        !window.confirm(
+          "確定重置全部 15 組？將清空成員、進度與組別碼，並解除開場鎖定狀態。"
+        )
+      ) {
+        return;
+      }
+      els.btnResetGroups.disabled = true;
+      try {
+        const { data } = await initPuzzleGroups({
+          resetMembers: true,
+          forceNewCodes: true,
+        });
+        setMsg(els.puzzleMsg, `已重置 ${data.groups.length} 組`, true);
+        await refreshPuzzleGroups();
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      } finally {
+        els.btnResetGroups.disabled = false;
+      }
+    });
+  }
+
+  if (els.btnUnlockOpening) {
+    els.btnUnlockOpening.addEventListener("click", async () => {
+      if (!window.confirm("確定對全場解鎖開場？未滿組也可進入開場。")) return;
+      try {
+        await unlockOpening({ unlocked: true });
+        setMsg(els.puzzleMsg, "開場已解鎖", true);
+        await refreshPuzzleGroups();
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      }
+    });
+  }
+
+  if (els.btnLockOpening) {
+    els.btnLockOpening.addEventListener("click", async () => {
+      try {
+        await unlockOpening({ unlocked: false });
+        setMsg(els.puzzleMsg, "開場已重新鎖定", true);
+        await refreshPuzzleGroups();
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      }
+    });
+  }
+
+  if (els.btnUnlockFinale) {
+    els.btnUnlockFinale.addEventListener("click", async () => {
+      if (!window.confirm("確定對全場解鎖終場？")) return;
+      try {
+        await unlockFinale({ unlocked: true });
+        setMsg(els.puzzleMsg, "終場已解鎖", true);
+        await refreshPuzzleGroups();
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      }
+    });
+  }
+
+  if (els.btnLockFinale) {
+    els.btnLockFinale.addEventListener("click", async () => {
+      try {
+        await unlockFinale({ unlocked: false });
+        setMsg(els.puzzleMsg, "終場已重新鎖定", true);
+        await refreshPuzzleGroups();
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      }
+    });
+  }
+
+  if (els.btnDesignateSilencers) {
+    els.btnDesignateSilencers.addEventListener("click", async () => {
+      const groupId = (els.silencerGroup && els.silencerGroup.value) || "";
+      if (!groupId) {
+        setMsg(els.puzzleMsg, "請先選擇組別", false);
+        return;
+      }
+      if (
+        !window.confirm(
+          `確定將 ${groupId} 四位成員指定為封口者，並解鎖全場第四幕？`
+        )
+      ) {
+        return;
+      }
+      els.btnDesignateSilencers.disabled = true;
+      try {
+        const { data } = await designateSilencersAndUnlockAct4({
+          group_id: groupId,
+          unlock: true,
+        });
+        setMsg(
+          els.puzzleMsg,
+          `已指定封口者 ${((data && data.silencers) || []).join("、")}，第四幕已解鎖`,
+          true
+        );
+        await refreshPuzzleGroups();
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      } finally {
+        els.btnDesignateSilencers.disabled = false;
+      }
+    });
+  }
+
+  if (els.btnRefreshGroups) {
+    els.btnRefreshGroups.addEventListener("click", () => refreshPuzzleGroups());
+  }
+
+  if (els.groupsBody) {
+    els.groupsBody.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-pass-group][data-pass-role]");
+      if (!btn) return;
+      const groupId = btn.getAttribute("data-pass-group");
+      const role = btn.getAttribute("data-pass-role");
+      if (!window.confirm(`確認 ${groupId}「${role}」任務通過？`)) return;
+      btn.disabled = true;
+      try {
+        await passAct2Role({ group_id: groupId, role });
+        setMsg(els.puzzleMsg, `${groupId} ${role}任務已通過`, true);
+        await refreshPuzzleGroups();
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+        btn.disabled = false;
+      }
+    });
+  }
+
+  if (els.moveForm) {
+    els.moveForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = (els.moveId.value || "").trim();
+      const group_id = (els.moveGroup.value || "").trim();
+      if (!id || !group_id) {
+        setMsg(els.puzzleMsg, "請填寫大使編號與目標組別", false);
+        return;
+      }
+      els.btnMove.disabled = true;
+      try {
+        await adminMoveMember({ id, group_id });
+        setMsg(els.puzzleMsg, `已將 ${id} 移至 ${group_id}`, true);
+        els.moveId.value = "";
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      } finally {
+        els.btnMove.disabled = false;
+      }
+    });
+  }
+
+  if (els.btnRemoveMember) {
+    els.btnRemoveMember.addEventListener("click", async () => {
+      const id = (els.moveId.value || "").trim();
+      if (!id) {
+        setMsg(els.puzzleMsg, "請填寫要移出的大使編號", false);
+        return;
+      }
+      if (!window.confirm(`確定將 ${id} 移出目前組別？`)) return;
+      try {
+        await adminMoveMember({ id, remove: true });
+        setMsg(els.puzzleMsg, `已將 ${id} 移出組別`, true);
+      } catch (err) {
+        setMsg(els.puzzleMsg, friendlyError(err), false);
+      }
+    });
+  }
 })();

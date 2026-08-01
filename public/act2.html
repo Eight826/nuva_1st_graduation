@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 第二幕</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 111, 232, 0.16), transparent 55%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 3px rgba(59, 111, 232, 0.2);
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased" data-act="act2">
+    <div class="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
+      <header class="mb-6 text-center">
+        <p class="mb-2 text-xs font-medium tracking-[0.08em] text-brand lowercase">nuva</p>
+        <div id="act-progress" class="mb-3 mt-1" aria-label="組進度"></div>
+        <h1 class="text-2xl font-semibold tracking-tight">第二幕</h1>
+        <p id="me-chip" class="mt-2 text-xs text-mute"></p>
+      </header>
+
+      <div
+        id="follow-banner"
+        class="mb-4 hidden border border-brand/40 bg-brand/10 px-4 py-3 text-sm"
+      >
+        <p data-follow-label class="font-medium"></p>
+        <button type="button" data-follow-go class="mt-2 text-brand underline-offset-2 hover:underline">
+          點此跟隨
+        </button>
+      </div>
+
+      <section id="auth-gate" class="hidden">
+        <form id="auth-form" class="space-y-4">
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使編號</span>
+            <input id="auth-id" required class="input-field w-full border border-line bg-panel px-4 py-3" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使姓名</span>
+            <input id="auth-name" required class="input-field w-full border border-line bg-panel px-4 py-3" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">報到 PIN</span>
+            <input
+              id="auth-pin"
+              type="password"
+              required
+              class="input-field w-full border border-line bg-panel px-4 py-3 tracking-widest"
+            />
+          </label>
+          <p id="auth-error" class="hidden text-sm text-red-400"></p>
+          <button id="btn-auth" type="submit" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            進入解謎
+          </button>
+        </form>
+      </section>
+
+      <section id="puzzle-main" class="hidden flex-1">
+        <div class="mb-4 border border-line bg-panel/60 px-4 py-3">
+          <p class="text-xs text-mute">第二幕任務狀態（全組）</p>
+          <ul id="act2-status" class="mt-2 space-y-1 text-sm"></ul>
+        </div>
+
+        <article class="mb-4 border border-line bg-panel/80 px-5 py-6">
+          <p class="text-xs tracking-[0.2em] text-mute">STORY</p>
+          <div class="mt-4 space-y-4 text-sm leading-relaxed text-white/85">
+            <p>
+              調查開始後不久，警方收到了一封沒有署名的信。信件上沒有留下寄件人的姓名，也沒有任何可供追查的編號。對方似乎十分清楚警方目前的調查進度，甚至知道死者在遇害之前，已經將部分資料分別交給不同的人保管。
+            </p>
+            <div class="space-y-2 border-l-2 border-brand/40 pl-4">
+              <p class="text-xs tracking-[0.15em] text-mute">信件內容</p>
+              <p>「你們看到的，只是我希望你們看到的。」</p>
+              <p>「死者將真相拆散了，但你們不一定有能力重新拼起來。」</p>
+              <p>「想知道我是誰，就先證明你們有資格接近真相。」</p>
+            </div>
+            <p class="text-white">
+              兇手不只知道警方正在進行調查，也可能正藏在眾人之中，觀察每一支小隊的行動。為了取得死者留下的完整資料，各小組必須依照成員的身分分頭進行調查。
+            </p>
+          </div>
+        </article>
+
+        <!-- 品味家 -->
+        <div id="panel-taste" class="hidden space-y-4">
+          <article class="border border-line bg-panel/80 px-5 py-5">
+            <p class="text-xs tracking-[0.15em] text-mute">品味家的任務</p>
+            <div class="mt-3 space-y-4 text-sm leading-relaxed text-white/85">
+              <p>
+                品味家必須帶著自己的身分證明，解出正確口號後，前往尋找一號警探。只有說出正確口號，一號警探才會交付下一份案件資料。
+              </p>
+              <div class="space-y-2">
+                <p class="text-xs tracking-[0.15em] text-mute">品味家謎題內容</p>
+                <ol class="list-decimal space-y-2 pl-5">
+                  <li>天將降大▢於是人也。</li>
+                  <li>▢必找出兇手</li>
+                  <li>重要的不是 prompt 的▢量，而是質▢</li>
+                </ol>
+                <p>將▢中的字組成一句話，並去告訴一號警探。</p>
+              </div>
+            </div>
+            <p id="taste-status" class="mt-4 text-sm text-brand">請向一號警探回報，等待主領確認…</p>
+          </article>
+        </div>
+
+        <!-- 判斷家 -->
+        <div id="panel-judge" class="hidden space-y-4">
+          <article class="border border-line bg-panel/80 px-5 py-5">
+            <p class="text-xs tracking-[0.15em] text-mute">判斷家的任務</p>
+            <div class="mt-3 space-y-4 text-sm leading-relaxed text-white/85">
+              <p>
+                判斷家必須帶著自己的身分證明，解出正確數字後，前往尋找二號警探。只有說出正確數字，二號警探才會交付下一份案件資料。
+              </p>
+              <img
+                src="./assets/第二幕判斷家謎題.png"
+                alt="判斷家謎題"
+                class="w-full border border-line bg-ink"
+              />
+              <p>算出題目中的答案（數字），去告訴二號警探。</p>
+            </div>
+            <p id="judge-hint" class="mt-3 hidden text-xs text-brand">
+              提示：Reverse Alignment 轉過來看看
+            </p>
+            <p id="judge-status" class="mt-4 text-sm text-brand">請向二號警探回報，等待主領確認…</p>
+          </article>
+        </div>
+
+        <!-- 大力士 -->
+        <div id="panel-strong" class="hidden space-y-4">
+          <article class="border border-line bg-panel/80 px-5 py-5">
+            <p class="text-xs tracking-[0.15em] text-mute">大力士的任務</p>
+            <div class="mt-3 space-y-4 text-sm leading-relaxed text-white/85">
+              <p class="text-white">謎題：你們是否有那個資格來破案</p>
+              <p>請與同一組的大力士，一起去挑戰主領人吧！</p>
+              <p class="text-mute">Ps. 挑戰失敗會有小懲罰哦</p>
+              <p>
+                兩位大力士必須協助小組整理目前取得的資料，並前往尋找警方指定的案件紀錄官——上哲。
+              </p>
+              <p>
+                案件紀錄官手中保管著死者隨身物品中的重要資訊，但在交付資料之前，大力士必須先代表小組完成初步答案的核驗。
+              </p>
+              <p>兩位大力士必須分別完成一次核驗，每一位都會取得不同的線索。</p>
+              <p>
+                如果答案正確，案件紀錄官就會確認該組已具備閱讀機密資料的資格，並交付下一份案件紀錄。
+              </p>
+              <p>
+                如果答案錯誤，案件紀錄官會以「補充調查資料」的名義，要求答錯者與其一起做出鬼臉，拍下一張「錯誤推理反應紀錄」。完成拍照後，便可以重新排隊挑戰，再次前往挑戰核驗，取得線索。
+              </p>
+            </div>
+            <p id="strong-status" class="mt-4 text-sm text-brand">等待主領確認中…</p>
+          </article>
+        </div>
+
+        <p id="act-error" class="mt-4 hidden text-sm text-red-400"></p>
+        <p id="readonly-note" class="mt-4 hidden text-center text-xs text-mute">此為回看模式（組已前進）</p>
+
+        <div class="mt-8 flex flex-col gap-3">
+          <button id="btn-next" type="button" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            下一步（需三人任務完成）
+          </button>
+          <button
+            id="btn-back"
+            type="button"
+            class="w-full border border-line bg-panel px-4 py-3 text-sm text-mute hover:border-brand hover:text-white"
+          >
+            上一頁
+          </button>
+        </div>
+
+        <div class="mt-8 flex justify-between text-xs text-mute">
+          <a href="./join.html" class="hover:text-white hover:underline">組隊頁</a>
+          <button id="btn-logout" type="button" class="hover:text-white hover:underline">清除登入</button>
+        </div>
+      </section>
+
+      <footer class="mt-auto pt-12 text-center text-[11px] text-mute/70">
+        Made by none.tech · William Lu
+      </footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/puzzle.js"></script>
+    <script>
+      (async () => {
+        const HINT_MS = 10 * 60 * 1000;
+        let hintTimer = null;
+
+        function renderStatus(state) {
+          const act2 = (state.group && state.group.act2) || {};
+          const roles = ["品味家", "判斷家", "大力士"];
+          document.getElementById("act2-status").innerHTML = roles
+            .map((r) => {
+              const ok = !!act2[r];
+              return `<li class="flex justify-between"><span>${r}</span><span class="${
+                ok ? "text-brand" : "text-mute"
+              }">${ok ? "已完成" : "未完成"}</span></li>`;
+            })
+            .join("");
+
+          const me = document.getElementById("me-chip");
+          if (me) {
+            me.textContent = `${state.name} · ${state.role} · ${state.group?.id || ""}`;
+          }
+
+          const tasteSt = document.getElementById("taste-status");
+          if (tasteSt) {
+            tasteSt.textContent = act2["品味家"]
+              ? "主領已確認：品味家任務通過！"
+              : "請向一號警探回報，等待主領確認…";
+          }
+          const judgeSt = document.getElementById("judge-status");
+          if (judgeSt) {
+            judgeSt.textContent = act2["判斷家"]
+              ? "主領已確認：判斷家任務通過！"
+              : "請向二號警探回報，等待主領確認…";
+          }
+          const strongSt = document.getElementById("strong-status");
+          if (strongSt) {
+            strongSt.textContent = act2["大力士"]
+              ? "主領已確認：大力士任務通過！"
+              : "等待主領確認中…";
+          }
+
+          const btnNext = document.getElementById("btn-next");
+          const note = document.getElementById("readonly-note");
+          if (NuvaPuzzle.isPreviewState(state)) {
+            NuvaPuzzle.syncActProgress(state, "act2");
+            NuvaPuzzle.applyStaffPreviewChrome("act2");
+            return;
+          }
+          const onFrontier = state.group && state.group.currentAct === "act2";
+          if (btnNext) btnNext.classList.toggle("hidden", !onFrontier);
+          if (note) note.classList.toggle("hidden", onFrontier);
+        }
+
+        function showRolePanel(role) {
+          document.getElementById("panel-taste").classList.toggle("hidden", role !== "品味家");
+          document.getElementById("panel-judge").classList.toggle("hidden", role !== "判斷家");
+          document.getElementById("panel-strong").classList.toggle("hidden", role !== "大力士");
+        }
+
+        await NuvaPuzzle.bootPage({
+          pageAct: "act2",
+          onGroupUpdate(state) {
+            renderStatus(state);
+          },
+          async onReady(ctx) {
+            const { state, auth, callables, navigateToAct, logout } = ctx;
+            if (!NuvaPuzzle.isPreviewState(state)) {
+              showRolePanel(state.role);
+            }
+            renderStatus(state);
+
+            document.getElementById("btn-logout").addEventListener("click", logout);
+            document.getElementById("btn-back").addEventListener("click", () => {
+              navigateToAct("act1");
+            });
+
+            if (state.role === "判斷家") {
+              const enteredAt = Date.now();
+              hintTimer = setInterval(() => {
+                if (Date.now() - enteredAt >= HINT_MS) {
+                  document.getElementById("judge-hint").classList.remove("hidden");
+                  clearInterval(hintTimer);
+                }
+              }, 5000);
+            }
+
+            document.getElementById("btn-next").addEventListener("click", async () => {
+              const err = document.getElementById("act-error");
+              err.classList.add("hidden");
+              const btn = document.getElementById("btn-next");
+              btn.disabled = true;
+              try {
+                const res = await callables.advanceAct(auth);
+                navigateToAct(res.data.currentAct);
+              } catch (e) {
+                err.textContent = NuvaPuzzle.friendlyError(e);
+                err.classList.remove("hidden");
+              } finally {
+                btn.disabled = false;
+              }
+            });
+          },
+        });
+      })();
+    </script>
+  </body>
+</html>

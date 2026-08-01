@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 終場</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 111, 232, 0.16), transparent 55%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 3px rgba(59, 111, 232, 0.2);
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased" data-act="finale">
+    <div class="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
+      <header class="mb-6 text-center">
+        <p class="mb-2 text-xs font-medium tracking-[0.08em] text-brand lowercase">nuva</p>
+        <div id="act-progress" class="mb-3 mt-1" aria-label="組進度"></div>
+        <h1 class="text-2xl font-semibold tracking-tight">終場</h1>
+        <p id="me-chip" class="mt-2 text-xs text-mute"></p>
+      </header>
+
+      <div
+        id="follow-banner"
+        class="mb-4 hidden border border-brand/40 bg-brand/10 px-4 py-3 text-sm"
+      >
+        <p data-follow-label class="font-medium"></p>
+        <button type="button" data-follow-go class="mt-2 text-brand underline-offset-2 hover:underline">
+          點此跟隨
+        </button>
+      </div>
+
+      <section id="auth-gate" class="hidden">
+        <form id="auth-form" class="space-y-4">
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使編號</span>
+            <input id="auth-id" required class="input-field w-full border border-line bg-panel px-4 py-3" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使姓名</span>
+            <input id="auth-name" required class="input-field w-full border border-line bg-panel px-4 py-3" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">報到 PIN</span>
+            <input
+              id="auth-pin"
+              type="password"
+              required
+              class="input-field w-full border border-line bg-panel px-4 py-3 tracking-widest"
+            />
+          </label>
+          <p id="auth-error" class="hidden text-sm text-red-400"></p>
+          <button id="btn-auth" type="submit" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            進入解謎
+          </button>
+        </form>
+      </section>
+
+      <section id="puzzle-main" class="hidden flex-1">
+        <article class="border border-line bg-panel/80 px-5 py-6">
+          <p class="text-xs tracking-[0.2em] text-mute">STORY</p>
+          <div class="mt-4 space-y-8 text-sm leading-relaxed text-white/85">
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">現場證據回顧</p>
+              <p>現場留下的證據，原本全部指向 227 號大使。</p>
+              <p>
+                227 號的識別證出現在死者身旁。死者手中握著寫有 227 的紙條。檔案室的出入紀錄，也顯示 227 號曾在案發時間進入現場。
+              </p>
+              <p>然而，經過重新調查後，警方發現：</p>
+              <p>
+                227 號的識別證早在命案發生之前便已遺失。檔案室的出入時間，與其活動紀錄無法吻合。出現在現場的 227 號身分，不一定代表 227 號本人曾經到場。
+              </p>
+              <p class="text-white">227 號不是犯人。他是被安排好的替罪羊。</p>
+            </div>
+
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">死者遺言的答案</p>
+              <p>死者留下了兩句訊息：</p>
+              <div class="space-y-2 border-l-2 border-brand/40 pl-4">
+                <p>「初見之日，與任務之總數。」</p>
+                <p>「禾則兩利，莫使其李代桃僵。」</p>
+              </div>
+              <p>初見之日為十一月九日。任務之總數為十七。11＋9＋17＝37</p>
+              <p class="text-white">犯人的編號是：037</p>
+              <p>「禾」與兩個「利」的部分組成：秝</p>
+              <p>「李代桃僵」暗示了犯人的姓氏，及其嫁禍 227 號的手法。</p>
+              <p class="text-white">真正的犯人是：037 號大使 李秝</p>
+            </div>
+
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">案件真相</p>
+              <p>
+                037 號李秝原本不在大使畢業典禮的正式邀請名冊中。他替自己建立了一個不存在的大使身分，利用偽造的活動與經費資料，長期冒領大使活動經費。總務長發現名冊與實際受邀人數不一致，開始調查 037 號，並準備在畢業典禮當天公開證據。
+              </p>
+              <p>為了阻止事情曝光，李秝殺害總務長。</p>
+              <p>
+                他利用 227 號遺失的識別證，偽造案發現場與出入紀錄，試圖將罪名轉移給 227 號。
+              </p>
+              <p class="text-white">這是一場早已安排好的——李代桃僵。</p>
+            </div>
+
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">被封鎖的真相</p>
+              <p>李秝冒領的經費，部分流入大使管理中心，也有部分被用來收買警隊高層。</p>
+              <p>
+                第一支找出 037 號李秝的小組，被警隊秘密帶離現場。他們在警隊的威脅下，成為協助掩蓋案件的封口者。警探沒有提供假的案件資料。但是，他們選擇不立即公開真相。封口者則回到調查員之中，開始散播錯誤消息，試圖讓其他小組重新相信 227 號就是犯人。
+              </p>
+            </div>
+
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">封口者</p>
+              <p>本次案件中的封口者為：</p>
+              <ul id="silencers-list" class="space-y-2 border border-line bg-ink/40 px-4 py-3 text-white">
+                <li class="text-mute">（尚未指定／活動現場公布）</li>
+              </ul>
+              <p>他們沒有參與原本的命案。但是在知道真相後，受到警隊威脅，開始協助掩蓋案件。</p>
+            </div>
+
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">最後的真相</p>
+              <p>真正殺害總務長的人是：<span class="text-white">037 號李秝</span></p>
+              <p>遭到嫁禍的人是：<span class="text-white">227 號大使</span></p>
+              <p>協助掩蓋真相的人是：<span class="text-white">受到警隊威脅的封口者</span></p>
+            </div>
+
+            <div class="space-y-3 text-center">
+              <p class="text-xs tracking-[0.2em] text-mute">最後一頁</p>
+              <div class="space-y-2 border-l-2 border-brand/40 pl-4 text-left">
+                <p class="text-white">「眼見不一定為實。」</p>
+              </div>
+              <p class="text-left">識別證可以被冒用。紀錄可以被安排。真相也可能被選擇性地隱藏。</p>
+              <p class="text-left">
+                真正困難的，從來不是找到真相。而是在說出真相需要付出代價時，仍然選擇保護它。
+              </p>
+              <p class="mt-6 text-lg font-semibold tracking-wide text-white">《被偽造的真相》</p>
+              <p class="text-mute tracking-[0.2em]">調查結束</p>
+            </div>
+          </div>
+        </article>
+
+        <div class="mt-8 flex flex-col gap-3">
+          <button
+            id="btn-back"
+            type="button"
+            class="w-full border border-line bg-panel px-4 py-3 text-sm text-mute hover:border-brand hover:text-white"
+          >
+            上一頁
+          </button>
+        </div>
+
+        <div class="mt-8 flex justify-between text-xs text-mute">
+          <a href="./join.html" class="hover:text-white hover:underline">組隊頁</a>
+          <button id="btn-logout" type="button" class="hover:text-white hover:underline">清除登入</button>
+        </div>
+      </section>
+
+      <footer class="mt-auto pt-12 text-center text-[11px] text-mute/70">
+        Made by none.tech · William Lu
+      </footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/puzzle.js"></script>
+    <script>
+      (async () => {
+        function renderSilencers(state) {
+          const list = document.getElementById("silencers-list");
+          if (!list) return;
+          const rows = state.silencersPublic;
+          if (!Array.isArray(rows) || rows.length === 0) {
+            list.innerHTML = '<li class="text-mute">（尚未指定／活動現場公布）</li>';
+            return;
+          }
+          list.innerHTML = rows
+            .map(
+              (r) =>
+                `<li><span class="text-mute">${r.id}</span>　<span class="text-white">${r.name || ""}</span></li>`
+            )
+            .join("");
+        }
+
+        function updateChrome(state) {
+          const me = document.getElementById("me-chip");
+          if (me) {
+            me.textContent = `${state.name} · ${state.role} · ${
+              state.group?.id || (NuvaPuzzle.isPreviewState(state) ? "預覽" : "")
+            }`;
+          }
+          NuvaPuzzle.syncActProgress(state, "finale");
+          if (NuvaPuzzle.isPreviewState(state)) {
+            NuvaPuzzle.applyStaffPreviewChrome("finale");
+          }
+          renderSilencers(state);
+        }
+
+        await NuvaPuzzle.bootPage({
+          pageAct: "finale",
+          onGroupUpdate(state) {
+            updateChrome(state);
+          },
+          async onReady(ctx) {
+            const { state, navigateToAct, refresh, logout } = ctx;
+            updateChrome(state);
+
+            document.getElementById("btn-logout").addEventListener("click", logout);
+            document.getElementById("btn-back").addEventListener("click", () => {
+              navigateToAct("waiting");
+            });
+
+            // Poll in case finale was unlocked after page load / silencers updated
+            setInterval(async () => {
+              try {
+                const latest = await refresh();
+                updateChrome(latest);
+              } catch (_) {
+                /* ignore */
+              }
+            }, 20000);
+          },
+        });
+      })();
+    </script>
+  </body>
+</html>

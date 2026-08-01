@@ -1,19 +1,17 @@
-# Nuva Graduation — 命案遊戲大使身份查詢系統
+# Nuva Graduation — 架構與廢碼
 
-大使掃 QR → PIN 驗證 → 後端抽籤 → 組隊解謎多幕 → 終場／證書。  
+> **架構單一真相來源**（更新：2026-08-01）  
+> 產品規格背景：[`PRD.md`](./PRD.md)｜相對上一版：[`CHANGELOG-vs-previous.md`](./CHANGELOG-vs-previous.md)
+
+現場活動：掃 QR → PIN 驗證 → 後端抽籤 → 組隊解謎多幕 → 終場／證書。  
 **抽籤、兇手、角色池、組進度只在 Cloud Functions（Admin SDK）判定**；前端只送請求與顯示。
 
-更細的廢碼審計與呼叫矩陣見 [`docs/architecture-and-dead-code.md`](docs/architecture-and-dead-code.md)。  
-產品規格背景：[`docs/PRD.md`](docs/PRD.md)（部分章節可能落後，以本 README／架構文件為準）。
-
-```text
-前端 public/  ──httpsCallable──►  後端 functions/
-       │                              │
-       └── 公開讀 onSnapshot ────────►│
-                                      ▼
-                              Firestore 資料庫
-                                      ▲
-                              scripts/（本機維運）
+```mermaid
+flowchart LR
+  FE[前端 public/] -->|httpsCallable| BE[後端 functions/]
+  BE --> DB[(Firestore)]
+  FE -.->|公開讀 onSnapshot| DB
+  Scripts[scripts/ 本機維運] --> DB
 ```
 
 ---
@@ -52,6 +50,15 @@
 - `qr.png` — QR 頁
 - `第二幕判斷家謎題.png` — 第二幕
 - `電子證書正式版.pdf` + `fonts/NotoSansTC-Bold-subset.ttf` — 證書
+
+### 前端呼叫的後端函式
+
+| 模組 | Callables |
+| --- | --- |
+| `app.js` | `verifyCheckin`、`drawRole`、`createPuzzleSession` |
+| `puzzle.js` | `getPuzzleState`、`joinGroup`、`leaveGroup`、`advanceAct`、`submitAct4Accusation`、`createPuzzleSession`、`verifyCheckin`；（另註冊未呼叫的 `submitAct2Answer`，見廢碼） |
+| `admin.js` | `ensureAdminClaim`、`resetAmbassador`、`adjustRolePool`、`exportRoster`、`exportFinalRoster`、`getKillerAssignment`、`setKiller`、`initPuzzleGroups`、`unlockOpening`、`unlockFinale`、`listPuzzleGroups`、`passAct2Role`、`designateSilencersAndUnlockAct4`、`adminMoveMember` |
+| `print.html` | `exportPinRoster` |
 
 第二幕現況：玩家看謎題、現場回報；**後台 `passAct2Role` 一鍵通過**各角色任務。
 
@@ -94,19 +101,25 @@
 | `advanceAct` | 推進組進度 |
 | `submitAct4Accusation` | 第四幕指認 |
 | `passAct2Role` | 後台通過第二幕某角色任務 |
-| `submitAct2Answer` / `setPuzzleAnswers` | 舊線上驗答路徑（前端現況未用） |
-| `health` | HTTP 探活 |
+| `submitAct2Answer` | 舊線上驗答（前端已不用） |
+| `setPuzzleAnswers` | 寫入 act2 標準答案（無 UI） |
 
-### 本機維運（不上線）
+### HTTP
+
+| 函式 | 說明 |
+| --- | --- |
+| `health` | 探活 JSON；repo 內無呼叫 |
+
+### 本機維運（不上線，屬後端資料準備）
 
 | 指令 | 作用 |
 | --- | --- |
-| `cd scripts && npm run seed` | 匯入大使、PIN、角色池 |
+| `scripts` → `npm run seed` | 匯入大使、PIN、角色池 |
 | `npm run mark-attendance` | 標記出席 |
 | `npm run mark-staff` | 固定工作人員 |
 | `npm run create-admin` | 建管理員帳號 |
 
-輸入：`scripts/data/ambassadors.csv`（fallback：`大使名單-工作表1.csv`）、`attendees.csv`、`staff.csv`。  
+輸入 CSV：`scripts/data/ambassadors.csv`（fallback：`大使名單-工作表1.csv`）、`attendees.csv`、`staff.csv`。  
 機密產出：`scripts/output/`（gitignore）。
 
 ---
@@ -125,34 +138,44 @@
 | `group_codes/{code}` | 禁止 | 禁止 | code → `group_id` |
 | `puzzle_sessions/{token}` | 禁止 | 禁止 | 解謎短時登入（TTL 12h） |
 
-`system_config/main` 重點：`role_pool.remaining`、`killer.*`、`puzzle.openingUnlocked`／`act4Unlocked`／`finaleUnlocked`、`silencers`、`answers`。
+### `system_config/main` 重點
+
+- `role_pool.remaining` — 角色剩餘名額  
+- `killer.mode` / `killer.remaining` — 犯人模式  
+- `puzzle.openingUnlocked` / `act4Unlocked` / `finaleUnlocked`  
+- `puzzle.silencers`、`act4ClearCount`  
+- `puzzle.answers` — `{ taster, judge }`（僅後端；現況多為 placeholder）
+
+索引：`firestore.indexes.json` 目前為空（尚未需要複合索引）。
 
 ---
 
-## 常用指令
+## 四、廢碼狀態
 
-```bash
-# 部署全站
-npx firebase-tools@latest deploy
+### 已刪除（確認廢碼，2026-08-01）
 
-# 只部署前端
-npx firebase-tools@latest deploy --only hosting
+| 項目 | 動作 |
+| --- | --- |
+| `passAct2Strongmen` | 已自 `functions/index.js` 移除（由 `passAct2Role` 取代） |
+| `scripts/data/nuvacampus_結業典禮參加者名單_2026-07-13.csv` | 已刪（無腳本讀取的備份） |
+| `scripts/skills-lock.json` | 已刪（與根目錄重複） |
+| `puzzle.js` 死選擇器 `#taste-form` 等 | 已清，僅保留 `[data-preview-hide]` |
 
-# 只部署後端函式
-npx firebase-tools@latest deploy --only functions
+### 仍保留的可疑未用
 
-# 種子／出席／工作人員／管理員（見上方「本機維運」）
-cd scripts && npm install && npm run seed
-cd scripts && npm run mark-attendance -- --create-missing --sync-pool
-cd scripts && npm run mark-staff
-cd scripts && npm run create-admin
-```
+| 項目 | 說明 |
+| --- | --- |
+| `submitAct2Answer` | Functions 仍在；`puzzle.js` 有註冊、無呼叫 |
+| `setPuzzleAnswers` | 無後台 UI |
+| `health` | 可能供人工探活 |
+| `puzzle.answers` 鏈 | 與線上驗答綁定；現況 UX 幾乎不用 |
 
----
+### 過時文件／參考資產（未刪）
 
-## 機密與不要動錯的地方
+| 項目 | 說明 |
+| --- | --- |
+| `docs/PRD.md` 部分章節 | Callable 列表、第二幕描述、Vercel 等落後 |
+| `scripts/data/謎題內容.pdf` | 企劃參考，無 runtime 引用 |
+| `docs/CHANGELOG-vs-previous.md` | 僅涵蓋工作人員那版差異 |
 
-- `scripts/output/` — PIN、管理員密碼，已忽略 git
-- `serviceAccountKey.json` — Admin SDK 金鑰，勿提交
-- `firestore.rules` — 改錯會讓機密 collection 外洩
-- `functions/index.js` — 業務核心；改前台不會改變抽籤結果
+若確定永不線上驗答，可再下線 `submitAct2Answer`／`setPuzzleAnswers`／`puzzle.answers`。

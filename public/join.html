@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 組隊</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 111, 232, 0.18), transparent 55%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 3px rgba(59, 111, 232, 0.2);
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased">
+    <div class="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
+      <header class="mb-8 text-center">
+        <p class="mb-3 text-xs font-medium tracking-[0.08em] text-brand lowercase">nuva</p>
+        <h1 class="text-2xl font-semibold tracking-tight">解謎組隊</h1>
+        <p class="mt-2 text-sm text-mute">輸入組別碼加入小組（每組 2 大力士 + 1 品味家 + 1 判斷家）</p>
+      </header>
+
+      <div
+        id="follow-banner"
+        class="mb-4 hidden border border-brand/40 bg-brand/10 px-4 py-3 text-sm"
+      >
+        <p data-follow-label class="font-medium"></p>
+        <button
+          type="button"
+          data-follow-go
+          class="mt-2 text-brand underline-offset-2 hover:underline"
+        >
+          點此跟隨
+        </button>
+      </div>
+
+      <section id="auth-gate" class="hidden">
+        <form id="auth-form" class="space-y-4">
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使編號</span>
+            <input id="auth-id" required class="input-field w-full border border-line bg-panel px-4 py-3 text-base" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使姓名</span>
+            <input id="auth-name" required class="input-field w-full border border-line bg-panel px-4 py-3 text-base" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">報到 PIN</span>
+            <input id="auth-pin" type="password" required class="input-field w-full border border-line bg-panel px-4 py-3 text-base tracking-widest" />
+          </label>
+          <p id="auth-error" class="hidden text-sm text-red-400"></p>
+          <button id="btn-auth" type="submit" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            進入解謎
+          </button>
+        </form>
+        <p class="mt-6 text-center text-xs text-mute">
+          <a href="/" class="hover:text-white hover:underline">返回抽籤頁</a>
+        </p>
+      </section>
+
+      <section id="puzzle-main" class="hidden flex-1">
+        <div class="mb-6 border border-line bg-panel/80 px-4 py-4">
+          <p class="text-xs text-mute">你的身分</p>
+          <p id="me-line" class="mt-1 text-lg font-medium"></p>
+          <p id="me-role" class="mt-1 text-sm text-brand"></p>
+        </div>
+
+        <div id="staff-preview-panel" class="mb-6 hidden border border-[#E8C547]/40 bg-[#E8C547]/10 px-4 py-4">
+          <p class="text-sm font-medium text-[#E8C547]">工作人員預覽</p>
+          <p class="mt-2 text-xs text-mute leading-relaxed">
+            唯讀模式：可自由查看每一幕文案與畫面，不受開場／終場解鎖限制，也不會入組或改寫進度。
+          </p>
+          <p class="mt-3 text-xs text-mute">請用下方導覽切換頁面。</p>
+        </div>
+
+        <div id="join-panel" class="space-y-4">
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">組別碼</span>
+            <input
+              id="input-code"
+              maxlength="8"
+              class="input-field w-full border border-line bg-panel px-4 py-3 text-center text-xl tracking-[0.3em] uppercase"
+              placeholder="ABCD"
+            />
+          </label>
+          <p id="join-error" class="hidden text-sm text-red-400"></p>
+          <button id="btn-join" type="button" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            加入小組
+          </button>
+        </div>
+
+        <div id="group-panel" class="mt-6 hidden">
+          <div class="border border-line bg-panel/80 px-4 py-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs text-mute">目前組別</p>
+                <p id="group-id" class="mt-1 text-lg font-semibold"></p>
+              </div>
+              <p id="group-code" class="font-mono text-sm tracking-widest text-brand"></p>
+            </div>
+            <p id="group-progress" class="mt-3 text-xs text-mute"></p>
+            <ul id="member-list" class="mt-4 space-y-2 text-sm"></ul>
+            <p id="slots-line" class="mt-4 text-xs text-mute"></p>
+          </div>
+
+          <p id="unlock-hint" class="mt-4 text-sm text-mute"></p>
+          <p id="action-error" class="mt-2 hidden text-sm text-red-400"></p>
+
+          <div class="mt-4 flex flex-col gap-3">
+            <button
+              id="btn-enter"
+              type="button"
+              class="hidden w-full bg-brand px-4 py-3.5 text-sm font-semibold"
+            >
+              進入開場
+            </button>
+            <button
+              id="btn-leave"
+              type="button"
+              class="w-full border border-line bg-panel px-4 py-3 text-sm text-mute hover:border-brand hover:text-white"
+            >
+              退出小組
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-8 flex justify-between text-xs text-mute">
+          <a href="/" class="hover:text-white hover:underline">抽籤頁</a>
+          <button id="btn-logout" type="button" class="hover:text-white hover:underline">
+            清除登入
+          </button>
+        </div>
+      </section>
+
+      <footer class="mt-auto pt-12 text-center text-[11px] text-mute/70">
+        Made by none.tech · William Lu
+      </footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/puzzle.js"></script>
+    <script>
+      (async () => {
+        function renderGroup(state) {
+          const group = state.group;
+          const joinPanel = document.getElementById("join-panel");
+          const groupPanel = document.getElementById("group-panel");
+          const previewPanel = document.getElementById("staff-preview-panel");
+
+          if (NuvaPuzzle.isPreviewState(state)) {
+            if (previewPanel) previewPanel.classList.remove("hidden");
+            joinPanel.classList.add("hidden");
+            groupPanel.classList.add("hidden");
+            NuvaPuzzle.applyStaffPreviewChrome("lobby");
+            return;
+          }
+          if (previewPanel) previewPanel.classList.add("hidden");
+
+          if (!group) {
+            joinPanel.classList.remove("hidden");
+            groupPanel.classList.add("hidden");
+            const btnJoin = document.getElementById("btn-join");
+            if (btnJoin) {
+              btnJoin.classList.remove("hidden");
+              btnJoin.disabled = false;
+            }
+            return;
+          }
+          joinPanel.classList.add("hidden");
+          groupPanel.classList.remove("hidden");
+          document.getElementById("group-id").textContent = group.id;
+          document.getElementById("group-code").textContent = group.code;
+          const label =
+            NuvaPuzzle.ACT_LABEL[group.currentAct] || group.currentAct;
+          document.getElementById("group-progress").textContent =
+            `進度：${label} · ${group.memberCount || (group.members || []).length}/4 人`;
+
+          const list = document.getElementById("member-list");
+          list.innerHTML = (group.members || [])
+            .map(
+              (m) =>
+                `<li class="flex justify-between border-b border-line/60 py-2"><span>${m.name || m.id}</span><span class="text-mute">${m.role}</span></li>`
+            )
+            .join("");
+
+          const slots = group.slots || {};
+          document.getElementById("slots-line").textContent =
+            `剩餘名額 — 大力士 ${slots["大力士"] ?? "—"} · 品味家 ${slots["品味家"] ?? "—"} · 判斷家 ${slots["判斷家"] ?? "—"}`;
+
+          const btnEnter = document.getElementById("btn-enter");
+          const hint = document.getElementById("unlock-hint");
+          const btnLeave = document.getElementById("btn-leave");
+          if (state.openingUnlocked) {
+            hint.textContent = "開場已解鎖，可進入解謎。";
+            btnEnter.classList.remove("hidden");
+            btnLeave.classList.add("hidden");
+          } else {
+            hint.textContent = "等待主辦解鎖開場…（開場前可自行退組換組）";
+            btnEnter.classList.add("hidden");
+            btnLeave.classList.remove("hidden");
+          }
+        }
+
+        await NuvaPuzzle.bootPage({
+          pageAct: "lobby",
+          onGroupUpdate(state) {
+            renderGroup(state);
+          },
+          async onReady(ctx) {
+            const { state, auth, callables, navigateToAct, refresh, logout } = ctx;
+            document.getElementById("me-line").textContent =
+              `${state.name}（編號 ${state.id}）`;
+            document.getElementById("me-role").textContent = state.role || "";
+            renderGroup(state);
+
+            document.getElementById("btn-logout").addEventListener("click", logout);
+
+            document.getElementById("btn-join").addEventListener("click", async () => {
+              const err = document.getElementById("join-error");
+              const codeInput = document.getElementById("input-code");
+              const btn = document.getElementById("btn-join");
+              const code = (codeInput && codeInput.value ? codeInput.value : "")
+                .trim()
+                .toUpperCase();
+              if (err) {
+                err.classList.add("hidden");
+                err.textContent = "";
+              }
+              if (!code) {
+                if (err) {
+                  err.textContent = "請輸入組別碼";
+                  err.classList.remove("hidden");
+                }
+                return;
+              }
+              const authNow = NuvaPuzzle.authPayload();
+              if (!authNow || !authNow.token) {
+                if (err) {
+                  err.textContent = "登入已失效，請重新驗證";
+                  err.classList.remove("hidden");
+                }
+                return;
+              }
+              btn.disabled = true;
+              const prevLabel = btn.textContent;
+              btn.textContent = "加入中…";
+              try {
+                const res = await callables.joinGroup({ ...authNow, code });
+                let next = null;
+                try {
+                  next = await refresh();
+                } catch (_) {
+                  next = null;
+                }
+                if (next && next.group) {
+                  renderGroup(next);
+                } else if (res && res.data && res.data.group) {
+                  renderGroup({
+                    ...state,
+                    group: res.data.group,
+                    group_id: res.data.group.id,
+                    openingUnlocked: state.openingUnlocked,
+                  });
+                } else {
+                  throw new Error("已送出但無法確認入組結果，請重新整理頁面");
+                }
+              } catch (e) {
+                if (err) {
+                  err.textContent = NuvaPuzzle.friendlyError(e) || "加入失敗，請再試一次";
+                  err.classList.remove("hidden");
+                }
+              } finally {
+                btn.disabled = false;
+                btn.textContent = prevLabel || "加入小組";
+              }
+            });
+
+            document.getElementById("btn-leave").addEventListener("click", async () => {
+              const err = document.getElementById("action-error");
+              err.classList.add("hidden");
+              try {
+                await callables.leaveGroup(auth);
+                const next = await refresh();
+                renderGroup(next);
+              } catch (e) {
+                err.textContent = NuvaPuzzle.friendlyError(e);
+                err.classList.remove("hidden");
+              }
+            });
+
+            document.getElementById("btn-enter").addEventListener("click", async () => {
+              const err = document.getElementById("action-error");
+              err.classList.add("hidden");
+              try {
+                const group = (await refresh()).group;
+                if (!group) return;
+                if (group.currentAct === "lobby") {
+                  await callables.advanceAct(auth);
+                }
+                navigateToAct("opening");
+              } catch (e) {
+                err.textContent = NuvaPuzzle.friendlyError(e);
+                err.classList.remove("hidden");
+              }
+            });
+          },
+        });
+      })();
+    </script>
+  </body>
+</html>

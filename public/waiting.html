@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 等待終場</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+              gold: "#E8C547",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 111, 232, 0.16), transparent 55%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 3px rgba(59, 111, 232, 0.2);
+      }
+      .rank-flip-scene {
+        perspective: 1100px;
+      }
+      .rank-flip-card {
+        transform-style: preserve-3d;
+        transform-origin: center center;
+      }
+      .rank-flip-card.rank-flip-play {
+        animation: rankReveal 0.9s ease-out forwards;
+      }
+      @keyframes rankReveal {
+        0% {
+          transform: rotateY(-90deg);
+          opacity: 0.35;
+        }
+        55% {
+          opacity: 1;
+        }
+        100% {
+          transform: rotateY(0deg);
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rank-flip-card.rank-flip-play {
+          animation: none;
+        }
+      }
+      .rank-gold {
+        color: #e8c547;
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased" data-act="waiting">
+    <div class="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
+      <header class="mb-6 text-center">
+        <p class="mb-2 text-xs font-medium tracking-[0.08em] text-brand lowercase">nuva</p>
+        <div id="act-progress" class="mb-3 mt-1" aria-label="組進度"></div>
+        <h1 class="text-2xl font-semibold tracking-tight">等待終場</h1>
+        <p id="me-chip" class="mt-2 text-xs text-mute"></p>
+      </header>
+
+      <div
+        id="follow-banner"
+        class="mb-4 hidden border border-brand/40 bg-brand/10 px-4 py-3 text-sm"
+      >
+        <p data-follow-label class="font-medium"></p>
+        <button type="button" data-follow-go class="mt-2 text-brand underline-offset-2 hover:underline">
+          點此跟隨
+        </button>
+      </div>
+
+      <section id="auth-gate" class="hidden">
+        <form id="auth-form" class="space-y-4">
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使編號</span>
+            <input id="auth-id" required class="input-field w-full border border-line bg-panel px-4 py-3" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使姓名</span>
+            <input id="auth-name" required class="input-field w-full border border-line bg-panel px-4 py-3" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">報到 PIN</span>
+            <input
+              id="auth-pin"
+              type="password"
+              required
+              class="input-field w-full border border-line bg-panel px-4 py-3 tracking-widest"
+            />
+          </label>
+          <p id="auth-error" class="hidden text-sm text-red-400"></p>
+          <button id="btn-auth" type="submit" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            進入解謎
+          </button>
+        </form>
+      </section>
+
+      <section id="puzzle-main" class="hidden flex-1">
+        <div class="rank-flip-scene">
+          <article
+            id="rank-card"
+            class="rank-flip-card border border-line bg-panel/80 px-5 py-8 text-center"
+          >
+            <p class="text-xs tracking-[0.2em] text-mute">CLEAR</p>
+            <p class="mt-4 text-sm text-mute">你們是</p>
+            <p id="rank-label" class="mt-2 text-4xl font-semibold text-white">第 — 組</p>
+            <p class="mt-2 text-sm text-mute">完成正式指認</p>
+            <p id="wait-copy" class="mt-8 text-sm leading-relaxed text-white/85">
+              請在此等待其他人完成調查。終場開放後即可繼續。
+            </p>
+          </article>
+        </div>
+
+        <p id="act-error" class="mt-4 hidden text-sm text-red-400"></p>
+
+        <div class="mt-8 flex flex-col gap-3">
+          <button id="btn-next" type="button" class="hidden w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            進入終場
+          </button>
+          <button
+            id="btn-back"
+            type="button"
+            class="w-full border border-line bg-panel px-4 py-3 text-sm text-mute hover:border-brand hover:text-white"
+          >
+            回第四幕（回看）
+          </button>
+        </div>
+
+        <div class="mt-8 flex justify-between text-xs text-mute">
+          <a href="./join.html" class="hover:text-white hover:underline">組隊頁</a>
+          <button id="btn-logout" type="button" class="hover:text-white hover:underline">清除登入</button>
+        </div>
+      </section>
+
+      <footer class="mt-auto pt-12 text-center text-[11px] text-mute/70">
+        Made by none.tech · William Lu
+      </footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/puzzle.js"></script>
+    <script>
+      (async () => {
+        let flipPlayed = false;
+
+        function render(state) {
+          const me = document.getElementById("me-chip");
+          if (me) {
+            me.textContent = `${state.name} · ${state.role} · ${state.group?.id || ""}`;
+          }
+          const rank = state.group && state.group.act4 && state.group.act4.rank;
+          const rankEl = document.getElementById("rank-label");
+          const card = document.getElementById("rank-card");
+          const top3 = rank != null && Number(rank) <= 3;
+          if (rankEl) {
+            rankEl.textContent = rank != null ? `第 ${rank} 組` : "第 — 組";
+            rankEl.classList.toggle("rank-gold", top3);
+            rankEl.classList.toggle("text-white", !top3);
+          }
+          if (card && top3 && !flipPlayed) {
+            flipPlayed = true;
+            const reduce =
+              window.matchMedia &&
+              window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            if (!reduce) {
+              card.classList.remove("rank-flip-play");
+              // restart animation if needed
+              void card.offsetWidth;
+              card.classList.add("rank-flip-play");
+            }
+          }
+          const unlocked = !!state.finaleUnlocked;
+          const btn = document.getElementById("btn-next");
+          const copy = document.getElementById("wait-copy");
+          const preview = NuvaPuzzle.isPreviewState(state);
+          if (btn) btn.classList.toggle("hidden", preview || !unlocked);
+          if (copy) {
+            copy.textContent = preview
+              ? "工作人員預覽：可直接用下方導覽查看終場。"
+              : unlocked
+                ? "終場已開放，請點下方按鈕進入。"
+                : "請在此等待其他人完成調查。終場開放後即可繼續。";
+          }
+          if (preview) NuvaPuzzle.applyStaffPreviewChrome("waiting");
+        }
+
+        await NuvaPuzzle.bootPage({
+          pageAct: "waiting",
+          onGroupUpdate(state) {
+            render(state);
+          },
+          async onReady(ctx) {
+            const { state, auth, callables, navigateToAct, refresh, logout } = ctx;
+            render(state);
+
+            // system_config is admin-only; poll getPuzzleState for finaleUnlocked
+            const poll = setInterval(async () => {
+              try {
+                const latest = await refresh();
+                render(latest);
+                if (latest.group && latest.group.currentAct === "finale") {
+                  clearInterval(poll);
+                  navigateToAct("finale");
+                }
+              } catch (_) {
+                /* ignore transient */
+              }
+            }, 15000);
+
+            document.getElementById("btn-logout").addEventListener("click", () => {
+              clearInterval(poll);
+              logout();
+            });
+            document.getElementById("btn-back").addEventListener("click", () => {
+              navigateToAct("act4");
+            });
+
+            document.getElementById("btn-next").addEventListener("click", async () => {
+              const err = document.getElementById("act-error");
+              err.classList.add("hidden");
+              const btn = document.getElementById("btn-next");
+              btn.disabled = true;
+              try {
+                const latest = await refresh();
+                render(latest);
+                if (!latest.finaleUnlocked) {
+                  throw new Error("終場尚未開放，請稍候主辦宣布");
+                }
+                const res = await callables.advanceAct(auth);
+                clearInterval(poll);
+                navigateToAct(res.data.currentAct);
+              } catch (e) {
+                err.textContent = NuvaPuzzle.friendlyError(e);
+                err.classList.remove("hidden");
+              } finally {
+                btn.disabled = false;
+              }
+            });
+          },
+        });
+      })();
+    </script>
+  </body>
+</html>

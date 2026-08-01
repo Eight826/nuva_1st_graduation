@@ -27,6 +27,9 @@
   const functions = firebase.app().functions("asia-east1");
   const verifyCheckin = functions.httpsCallable("verifyCheckin");
   const drawRole = functions.httpsCallable("drawRole");
+  const createPuzzleSession = functions.httpsCallable("createPuzzleSession");
+
+  const PUZZLE_SESSION_KEY = "nuva_puzzle_session";
 
   const els = {
     stepVerify: document.getElementById("step-verify"),
@@ -48,11 +51,17 @@
     resultName: document.getElementById("result-name"),
     resultId: document.getElementById("result-id"),
     resultNote: document.getElementById("result-note"),
+    certError: document.getElementById("cert-error"),
+    btnDownloadCert: document.getElementById("btn-download-cert"),
+    btnPuzzle: document.getElementById("btn-puzzle"),
     btnReset: document.getElementById("btn-reset"),
   };
 
   /** @type {{ id: string, name: string, pin: string } | null} */
   let session = null;
+  /** @type {string} */
+  let resultName = "";
+  const CERT_BTN_LABEL = "下載電子證書";
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -106,10 +115,25 @@
   }
 
   function fillResult({ id, name, role }) {
+    resultName = name || "";
     els.resultRole.textContent = role || "—";
     applyRoleTag(role || "");
     els.resultName.textContent = name || "";
     els.resultId.textContent = id ? `編號 ${id}` : "";
+  }
+
+  function setCertError(message) {
+    if (!els.certError) return;
+    setError(els.certError, message);
+  }
+
+  function setCertButtonVisible(visible) {
+    if (!els.btnDownloadCert) return;
+    els.btnDownloadCert.classList.toggle("hidden", !visible);
+    if (!visible) {
+      els.btnDownloadCert.disabled = false;
+      els.btnDownloadCert.textContent = CERT_BTN_LABEL;
+    }
   }
 
   function retriggerRolePop() {
@@ -120,12 +144,64 @@
     els.resultTag.classList.add("role-pop");
   }
 
-  function setResultChrome({ frontLabel, note, resetVisible }) {
+  function setResultChrome({
+    frontLabel,
+    note,
+    resetVisible,
+    puzzleVisible,
+    certVisible,
+  }) {
     if (els.resultFrontLabel) {
       els.resultFrontLabel.textContent = frontLabel;
     }
     els.resultNote.textContent = note || "";
     els.btnReset.classList.toggle("hidden", !resetVisible);
+    if (els.btnPuzzle) {
+      els.btnPuzzle.classList.toggle("hidden", !puzzleVisible);
+    }
+    if (typeof certVisible === "boolean") {
+      setCertButtonVisible(certVisible);
+    }
+  }
+
+  async function preparePuzzleSession(creds, profile) {
+    if (!els.btnPuzzle) return;
+    const isStaff = !!(
+      profile &&
+      (profile.is_staff === true ||
+        profile.preview === true ||
+        profile.role === "工作人員")
+    );
+    if (!profile || (!profile.is_drawn && !isStaff)) {
+      els.btnPuzzle.classList.add("hidden");
+      return;
+    }
+
+    // Show immediately — don't wait on createPuzzleSession (cold start / errors).
+    els.btnPuzzle.classList.remove("hidden");
+    els.btnPuzzle.textContent = isStaff ? "前往解謎預覽" : "前往組隊／解謎";
+
+    try {
+      const { data } = await createPuzzleSession(creds);
+      localStorage.setItem(
+        PUZZLE_SESSION_KEY,
+        JSON.stringify({
+          token: data.token,
+          expires_at: data.expires_at,
+          id: data.id || profile.id,
+          name: data.name || profile.name,
+          role: data.role || profile.role,
+          is_staff: data.is_staff === true || isStaff,
+          preview: data.preview === true || isStaff,
+        })
+      );
+      if (data.is_staff || data.preview || isStaff) {
+        els.btnPuzzle.textContent = "前往解謎預覽";
+      }
+    } catch (err) {
+      // Link still works; join/auth gate can re-issue a session.
+      console.warn("createPuzzleSession", err);
+    }
   }
 
   function beginSpinCard({ id, name }) {
@@ -137,10 +213,13 @@
     els.resultTag.style.color = "#7FA8F5";
     els.resultName.textContent = name || "";
     els.resultId.textContent = id ? `編號 ${id}` : "";
+    setCertError("");
     setResultChrome({
       frontLabel: "抽取中…",
       note: "卡片旋轉中，正在抽取你的身分…",
       resetVisible: false,
+      puzzleVisible: false,
+      certVisible: false,
     });
     showStep("result");
     if (!prefersReducedMotion()) {
@@ -150,25 +229,41 @@
   }
 
   /** Quick flip for already-drawn lookups (no lottery spin). */
-  function showResult({ id, name, role }, note) {
+  function showResult({ id, name, role, is_staff }, note) {
+    const staff = is_staff === true || role === "工作人員";
     fillResult({ id, name, role });
     resetCardMotion();
     retriggerRolePop();
+    setCertError("");
     setResultChrome({
       frontLabel: "翻開中…",
       note: note || "",
       resetVisible: true,
+      puzzleVisible: true,
+      certVisible: true,
     });
+    if (els.btnPuzzle) {
+      els.btnPuzzle.textContent = staff ? "前往解謎預覽" : "前往組隊／解謎";
+    }
     showStep("result");
     requestAnimationFrame(() => {
       els.resultCard.classList.add("is-revealing");
       setTimeout(() => els.resultCard.classList.add("is-flipped"), FLIP_DELAY_MS);
     });
+    if (session) {
+      preparePuzzleSession(session, {
+        id,
+        name,
+        role,
+        is_drawn: true,
+        is_staff: staff,
+      });
+    }
   }
 
   /**
    * Wait for the spin animation (and API), then flip to reveal the role.
-   * @param {{ id: string, name: string, role: string }} payload
+   * @param {{ id: string, name: string, role: string, is_staff?: boolean }} payload
    * @param {string} note
    * @param {number} startedAt
    */
@@ -177,12 +272,18 @@
       resetCardMotion();
       fillResult(payload);
       retriggerRolePop();
+      setCertError("");
       setResultChrome({
         frontLabel: "翻開中…",
         note: note || "",
         resetVisible: true,
+        puzzleVisible: false,
+        certVisible: true,
       });
       els.resultCard.classList.add("is-flipped");
+      if (session) {
+        await preparePuzzleSession(session, { ...payload, is_drawn: true });
+      }
       return;
     }
 
@@ -192,15 +293,21 @@
     els.resultCard.classList.remove("is-spinning");
     fillResult(payload);
     retriggerRolePop();
+    setCertError("");
     setResultChrome({
       frontLabel: "翻開中…",
       note: note || "",
       resetVisible: true,
+      puzzleVisible: false,
+      certVisible: true,
     });
     void els.resultCard.offsetWidth;
     els.resultCard.classList.add("is-revealing");
     await sleep(FLIP_DELAY_MS);
     els.resultCard.classList.add("is-flipped");
+    if (session) {
+      await preparePuzzleSession(session, { ...payload, is_drawn: true });
+    }
   }
 
   function credentialsFromForm() {
@@ -272,15 +379,51 @@
     }
   });
 
+  if (els.btnDownloadCert) {
+    els.btnDownloadCert.addEventListener("click", async () => {
+      const name = resultName || (session && session.name) || "";
+      if (!name) {
+        setCertError("缺少姓名，無法產生證書");
+        return;
+      }
+      if (
+        !window.NuvaCertificate ||
+        typeof window.NuvaCertificate.downloadCertificate !== "function"
+      ) {
+        setCertError("證書模組尚未就緒，請重新整理頁面");
+        return;
+      }
+
+      setCertError("");
+      els.btnDownloadCert.disabled = true;
+      els.btnDownloadCert.textContent = "產生中…";
+      try {
+        await window.NuvaCertificate.downloadCertificate(name);
+      } catch (err) {
+        console.warn("downloadCertificate", err);
+        const msg =
+          (err && err.message) || "證書產生失敗，請稍後再試";
+        setCertError(msg.replace(/^.*?:\s*/, "") || msg);
+      } finally {
+        els.btnDownloadCert.disabled = false;
+        els.btnDownloadCert.textContent = CERT_BTN_LABEL;
+      }
+    });
+  }
+
   els.btnReset.addEventListener("click", () => {
     session = null;
+    resultName = "";
     resetCardMotion();
     setError(els.verifyError, "");
     setError(els.drawError, "");
+    setCertError("");
     setResultChrome({
       frontLabel: "翻開中…",
       note: "",
       resetVisible: true,
+      puzzleVisible: false,
+      certVisible: false,
     });
     showStep("verify");
   });

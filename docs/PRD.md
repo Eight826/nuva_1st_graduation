@@ -230,6 +230,33 @@ match /ambassadors_secret/{id} {
 
 ---
 
+## 7. 解謎多幕與 15 組進度（Phase 6）
+
+### 流程
+
+1. 大使完成抽籤後可進入 `join.html` 輸入組別碼組隊  
+2. 後台預開 15 組（`G01`–`G15`），入組強制 2 大力士 + 1 品味家 + 1 判斷家  
+3. 後台一次「解鎖開場」；未滿組也可進入，可中途補人並落到組當前進度  
+4. 幕別頁：`opening` → `act1` → `act2` → `act3` → `act4` → `finale`  
+5. 開場／一／三／四／終場：組內任一人「下一步」推進整組；第二幕需三人任務（品味家／判斷家驗答＋大力士後台一鍵）全過  
+6. 組進度即時同步，其他成員以「組已前往下一幕 → 點擊跟隨」溫和導頁  
+
+### 資料
+
+- `groups/{groupId}`：code、slots、members、currentAct、act2  
+- `group_codes/{code}`：code → group_id（僅 Admin SDK）  
+- `puzzle_sessions/{token}`：短時登入 token（僅 Admin SDK）  
+- `system_config/main.puzzle`：`openingUnlocked`、`answers`（答案僅後端）  
+- `ambassadors_public.group_id`  
+
+### Callables
+
+`createPuzzleSession`、`initPuzzleGroups`、`unlockOpening`、`listPuzzleGroups`、`getPuzzleState`、`joinGroup`、`leaveGroup`、`adminMoveMember`、`advanceAct`、`submitAct2Answer`、`passAct2Strongmen`、`setPuzzleAnswers`
+
+工作人員不進組。開場前可自行退組；開場後調組僅後台。文案與第二幕正確答案本階段為 placeholder。
+
+---
+
 ## 🎯 6. 給 Cursor 的 Prompt 範例
 
 將這份規格檔案存為 `PRD.md` 後，在 Cursor 中直接貼上以下指令：

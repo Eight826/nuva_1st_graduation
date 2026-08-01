@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 第一幕</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 111, 232, 0.16), transparent 55%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 3px rgba(59, 111, 232, 0.2);
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased" data-act="act1">
+    <div class="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
+      <header class="mb-6 text-center">
+        <p class="mb-2 text-xs font-medium tracking-[0.08em] text-brand lowercase">nuva</p>
+        <div id="act-progress" class="mb-3 mt-1" aria-label="組進度"></div>
+        <h1 class="text-2xl font-semibold tracking-tight">第一幕</h1>
+        <p id="me-chip" class="mt-2 text-xs text-mute"></p>
+      </header>
+
+      <div id="follow-banner" class="mb-4 hidden border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
+        <p data-follow-label class="font-medium"></p>
+        <button type="button" data-follow-go class="mt-2 text-brand underline-offset-2 hover:underline">點此跟隨</button>
+      </div>
+
+      <section id="auth-gate" class="hidden">
+        <form id="auth-form" class="space-y-4">
+          <label class="block"><span class="mb-1.5 block text-xs text-mute">大使編號</span>
+            <input id="auth-id" required class="input-field w-full border border-line bg-panel px-4 py-3" /></label>
+          <label class="block"><span class="mb-1.5 block text-xs text-mute">大使姓名</span>
+            <input id="auth-name" required class="input-field w-full border border-line bg-panel px-4 py-3" /></label>
+          <label class="block"><span class="mb-1.5 block text-xs text-mute">報到 PIN</span>
+            <input id="auth-pin" type="password" required class="input-field w-full border border-line bg-panel px-4 py-3 tracking-widest" /></label>
+          <p id="auth-error" class="hidden text-sm text-red-400"></p>
+          <button id="btn-auth" type="submit" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">進入解謎</button>
+        </form>
+      </section>
+
+      <section id="puzzle-main" class="hidden flex-1">
+        <article class="border border-line bg-panel/80 px-5 py-6">
+          <p class="text-xs tracking-[0.2em] text-mute">STORY</p>
+          <div class="mt-4 space-y-4 text-sm leading-relaxed text-white/85">
+            <p>命案發生後，警方宣布所有在場人員都可能是嫌疑人，也可能成為兇手下一個下手的目標。</p>
+            <p>為了加快調查，警方將已經完成分組的大使小隊，編入臨時調查行動。每支隊伍中，都有擅長不同領域的成員。</p>
+
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">小組角色分工</p>
+              <p><span class="text-white">品味家</span>　擅長觀察物品、文字與容易被忽略的細節。</p>
+              <p><span class="text-white">判斷者</span>　擅長整理證詞、比對紀錄並辨認資訊中的矛盾。</p>
+              <p><span class="text-white">大力士</span>　負責代表小組執行行動任務、提交調查結果，並取得警方保管的重要資料。</p>
+            </div>
+
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">警探說明事項</p>
+              <ol class="list-decimal space-y-2 pl-5">
+                <li>死者生前負責管理大使名冊、活動經費及所有人的出入紀錄。</li>
+                <li>死者在死亡前正在調查一批來歷不明的資料。</li>
+                <li>請依靠自己取得的資料，找出兇手，在場的警探不會騙人。</li>
+                <li>只有持有對應身分卡的調查員，才能向負責該項資料的警探提出詢問。</li>
+                <li>不得將自己的身分證明交給別人，也不得直接向其他隊伍公開完整答案。</li>
+              </ol>
+            </div>
+
+            <p class="text-white">各小隊必須依照不同成員的能力，分頭取得資料，逐步還原案件的真相。</p>
+          </div>
+        </article>
+
+        <p id="readonly-note" class="mt-4 hidden text-center text-xs text-mute">此為回看模式（組已前進）</p>
+        <p id="act-error" class="mt-4 hidden text-sm text-red-400"></p>
+
+        <div class="mt-8 flex flex-col gap-3">
+          <button id="btn-next" type="button" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">下一步</button>
+          <button id="btn-back" type="button" class="w-full border border-line bg-panel px-4 py-3 text-sm text-mute hover:border-brand hover:text-white">上一頁</button>
+        </div>
+
+        <div class="mt-8 flex justify-between text-xs text-mute">
+          <a href="./join.html" class="hover:text-white hover:underline">組隊頁</a>
+          <button id="btn-logout" type="button" class="hover:text-white hover:underline">清除登入</button>
+        </div>
+      </section>
+
+      <footer class="mt-auto pt-12 text-center text-[11px] text-mute/70">Made by none.tech · William Lu</footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/puzzle.js"></script>
+    <script src="./js/act-page.js"></script>
+  </body>
+</html>

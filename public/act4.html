@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 第四幕</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 111, 232, 0.16), transparent 55%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 3px rgba(59, 111, 232, 0.2);
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased" data-act="act4">
+    <div class="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
+      <header class="mb-6 text-center">
+        <p class="mb-2 text-xs font-medium tracking-[0.08em] text-brand lowercase">nuva</p>
+        <div id="act-progress" class="mb-3 mt-1" aria-label="組進度"></div>
+        <h1 class="text-2xl font-semibold tracking-tight">第四幕</h1>
+        <p id="me-chip" class="mt-2 text-xs text-mute"></p>
+      </header>
+
+      <div
+        id="follow-banner"
+        class="mb-4 hidden border border-brand/40 bg-brand/10 px-4 py-3 text-sm"
+      >
+        <p data-follow-label class="font-medium"></p>
+        <button type="button" data-follow-go class="mt-2 text-brand underline-offset-2 hover:underline">
+          點此跟隨
+        </button>
+      </div>
+
+      <section id="auth-gate" class="hidden">
+        <form id="auth-form" class="space-y-4">
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使編號</span>
+            <input id="auth-id" required class="input-field w-full border border-line bg-panel px-4 py-3" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">大使姓名</span>
+            <input id="auth-name" required class="input-field w-full border border-line bg-panel px-4 py-3" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">報到 PIN</span>
+            <input
+              id="auth-pin"
+              type="password"
+              required
+              class="input-field w-full border border-line bg-panel px-4 py-3 tracking-widest"
+            />
+          </label>
+          <p id="auth-error" class="hidden text-sm text-red-400"></p>
+          <button id="btn-auth" type="submit" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            進入解謎
+          </button>
+        </form>
+      </section>
+
+      <section id="puzzle-main" class="hidden flex-1">
+        <article class="border border-line bg-panel/80 px-5 py-6">
+          <p class="text-xs tracking-[0.2em] text-mute">STORY</p>
+          <div class="mt-4 space-y-4 text-sm leading-relaxed text-white/85">
+            <p>
+              第一支成功破解死者遺言的小組，被警探帶往一旁進行內部核對。核對完後，會進一步地融入其小組的討論中。
+            </p>
+            <p class="text-white">是否採信，由你們決定。</p>
+            <p>請記住：警探不會騙人，核對結果不會有假。</p>
+            <p>
+              在場警探不會提供假的訊息。但是，警探不一定會立即公開所有內容，也可能因為調查權限而拒絕回答。你們從其他調查員口中聽到的內容，則必須自行判斷。
+            </p>
+
+            <div class="space-y-3">
+              <p class="text-xs tracking-[0.2em] text-mute">最終調查任務</p>
+              <p>各小組必須在時間結束前完成兩項判斷：</p>
+              <div class="space-y-2">
+                <p class="text-white">一、找出真正的犯人</p>
+                <p>請提交：</p>
+                <ul class="list-disc space-y-1 pl-5">
+                  <li>犯人的大使編號</li>
+                  <li>犯人的姓名</li>
+                </ul>
+              </div>
+              <div class="space-y-2">
+                <p class="text-white">二、找出所有封口者</p>
+                <p>只有找出全部封口者，才算完成最後的調查。</p>
+              </div>
+              <p class="text-white">真相不一定會被謊言完全掩蓋。</p>
+            </div>
+          </div>
+        </article>
+
+        <form id="accuse-form" class="mt-6 space-y-4">
+          <p class="text-xs text-mute">組內任一人可提交；可重複嘗試。全組共用同一進度。</p>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">犯人大使編號</span>
+            <input
+              id="killer-id"
+              required
+              class="input-field w-full border border-line bg-panel px-4 py-3"
+              placeholder="例如 12"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-xs text-mute">犯人姓名</span>
+            <input
+              id="killer-name"
+              required
+              class="input-field w-full border border-line bg-panel px-4 py-3"
+              placeholder="完整姓名"
+            />
+          </label>
+          <div class="space-y-2">
+            <p class="text-xs text-mute">封口者大使編號（4 位，順序不拘）</p>
+            <div class="grid grid-cols-2 gap-2">
+              <input id="silencer-0" required class="input-field w-full border border-line bg-panel px-4 py-3" placeholder="編號 1" />
+              <input id="silencer-1" required class="input-field w-full border border-line bg-panel px-4 py-3" placeholder="編號 2" />
+              <input id="silencer-2" required class="input-field w-full border border-line bg-panel px-4 py-3" placeholder="編號 3" />
+              <input id="silencer-3" required class="input-field w-full border border-line bg-panel px-4 py-3" placeholder="編號 4" />
+            </div>
+          </div>
+          <p id="act-error" class="hidden text-sm text-red-400"></p>
+          <p id="act-ok" class="hidden text-sm text-brand"></p>
+          <button id="btn-accuse" type="submit" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">
+            提交正式指認
+          </button>
+        </form>
+
+        <p id="readonly-note" class="mt-4 hidden text-center text-xs text-mute">此為回看模式（組已前進）</p>
+
+        <div class="mt-8 flex flex-col gap-3">
+          <button
+            id="btn-back"
+            type="button"
+            class="w-full border border-line bg-panel px-4 py-3 text-sm text-mute hover:border-brand hover:text-white"
+          >
+            上一頁
+          </button>
+        </div>
+
+        <div class="mt-8 flex justify-between text-xs text-mute">
+          <a href="./join.html" class="hover:text-white hover:underline">組隊頁</a>
+          <button id="btn-logout" type="button" class="hover:text-white hover:underline">清除登入</button>
+        </div>
+      </section>
+
+      <footer class="mt-auto pt-12 text-center text-[11px] text-mute/70">
+        Made by none.tech · William Lu
+      </footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/puzzle.js"></script>
+    <script>
+      (async () => {
+        function updateChrome(state) {
+          const me = document.getElementById("me-chip");
+          if (me) {
+            me.textContent = `${state.name} · ${state.role} · ${state.group?.id || ""}`;
+          }
+          if (NuvaPuzzle.isPreviewState(state)) {
+            NuvaPuzzle.syncActProgress(state, "act4");
+            NuvaPuzzle.applyStaffPreviewChrome("act4");
+            return;
+          }
+          const onFrontier = state.group && state.group.currentAct === "act4";
+          const form = document.getElementById("accuse-form");
+          const note = document.getElementById("readonly-note");
+          if (form) form.classList.toggle("hidden", !onFrontier);
+          if (note) note.classList.toggle("hidden", onFrontier);
+        }
+
+        await NuvaPuzzle.bootPage({
+          pageAct: "act4",
+          onGroupUpdate(state) {
+            updateChrome(state);
+            if (state.group && state.group.currentAct === "waiting") {
+              window.location.href = "./waiting.html";
+            }
+          },
+          async onReady(ctx) {
+            const { state, auth, callables, navigateToAct, logout } = ctx;
+            updateChrome(state);
+
+            document.getElementById("btn-logout").addEventListener("click", logout);
+            document.getElementById("btn-back").addEventListener("click", () => {
+              navigateToAct("act3");
+            });
+
+            if (state.group && NuvaPuzzle.actIndex(state.group.currentAct) > NuvaPuzzle.actIndex("act4")) {
+              navigateToAct(state.group.currentAct);
+              return;
+            }
+
+            document.getElementById("accuse-form").addEventListener("submit", async (e) => {
+              e.preventDefault();
+              const err = document.getElementById("act-error");
+              const ok = document.getElementById("act-ok");
+              err.classList.add("hidden");
+              ok.classList.add("hidden");
+              const btn = document.getElementById("btn-accuse");
+              const silencers = [0, 1, 2, 3].map((i) =>
+                document.getElementById(`silencer-${i}`).value.trim()
+              );
+              btn.disabled = true;
+              try {
+                const res = await callables.submitAct4Accusation({
+                  ...auth,
+                  killer_id: document.getElementById("killer-id").value,
+                  killer_name: document.getElementById("killer-name").value,
+                  silencers,
+                });
+                ok.textContent = `指認正確！你們是第 ${res.data.rank} 組完成`;
+                ok.classList.remove("hidden");
+                navigateToAct("waiting");
+              } catch (ex) {
+                err.textContent = NuvaPuzzle.friendlyError(ex);
+                err.classList.remove("hidden");
+              } finally {
+                btn.disabled = false;
+              }
+            });
+          },
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 開場</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 111, 232, 0.16), transparent 55%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 3px rgba(59, 111, 232, 0.2);
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased" data-act="opening">
+    <div class="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
+      <header class="mb-6 text-center">
+        <p class="mb-2 text-xs font-medium tracking-[0.08em] text-brand lowercase">nuva</p>
+        <div id="act-progress" class="mb-3 mt-1" aria-label="組進度"></div>
+        <h1 class="text-2xl font-semibold tracking-tight">開場</h1>
+        <p id="me-chip" class="mt-2 text-xs text-mute"></p>
+      </header>
+
+      <div id="follow-banner" class="mb-4 hidden border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
+        <p data-follow-label class="font-medium"></p>
+        <button type="button" data-follow-go class="mt-2 text-brand underline-offset-2 hover:underline">點此跟隨</button>
+      </div>
+
+      <section id="auth-gate" class="hidden">
+        <form id="auth-form" class="space-y-4">
+          <label class="block"><span class="mb-1.5 block text-xs text-mute">大使編號</span>
+            <input id="auth-id" required class="input-field w-full border border-line bg-panel px-4 py-3" /></label>
+          <label class="block"><span class="mb-1.5 block text-xs text-mute">大使姓名</span>
+            <input id="auth-name" required class="input-field w-full border border-line bg-panel px-4 py-3" /></label>
+          <label class="block"><span class="mb-1.5 block text-xs text-mute">報到 PIN</span>
+            <input id="auth-pin" type="password" required class="input-field w-full border border-line bg-panel px-4 py-3 tracking-widest" /></label>
+          <p id="auth-error" class="hidden text-sm text-red-400"></p>
+          <button id="btn-auth" type="submit" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">進入解謎</button>
+        </form>
+      </section>
+
+      <section id="puzzle-main" class="hidden flex-1">
+        <article class="border border-line bg-panel/80 px-5 py-6">
+          <p class="text-xs tracking-[0.2em] text-mute">STORY</p>
+          <div class="mt-4 space-y-4 text-sm leading-relaxed text-white/85">
+            <p>「大使畢業典禮」即將舉行，來自不同地區的大使來到此處。所有大使的身分資料、活動紀錄與經費文件，都由大使管理中心統一保管。</p>
+            <p>然而，就在活動正式開始之前，負責管理名冊與機密資料的總務長，被人發現倒臥在檔案室中。警方抵達時，總務長已經沒有生命跡象。</p>
+            <p>警方隨即封鎖現場，禁止任何人離開。</p>
+            <p>在死者身旁，警方發現了一張屬於 227 號大使的識別證。死者手中還握著一張寫有「227」的紙條，檔案室的出入紀錄也顯示，227 號曾在案發時間進入現場。</p>
+            <p>在不遠處的櫃子中有著死者的隨身物品，警方為甚麼沒有公布相關訊息？</p>
+            <p class="text-white">真正的調查，就此開始。</p>
+          </div>
+        </article>
+
+        <p id="readonly-note" class="mt-4 hidden text-center text-xs text-mute">此為回看模式（組已前進）</p>
+        <p id="act-error" class="mt-4 hidden text-sm text-red-400"></p>
+
+        <div class="mt-8 flex flex-col gap-3">
+          <button id="btn-next" type="button" class="w-full bg-brand px-4 py-3.5 text-sm font-semibold">下一步</button>
+          <button id="btn-back" type="button" class="w-full border border-line bg-panel px-4 py-3 text-sm text-mute hover:border-brand hover:text-white">上一頁</button>
+        </div>
+
+        <div class="mt-8 flex justify-between text-xs text-mute">
+          <a href="./join.html" class="hover:text-white hover:underline">組隊頁</a>
+          <button id="btn-logout" type="button" class="hover:text-white hover:underline">清除登入</button>
+        </div>
+      </section>
+
+      <footer class="mt-auto pt-12 text-center text-[11px] text-mute/70">Made by none.tech · William Lu</footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-functions-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/puzzle.js"></script>
+    <script src="./js/act-page.js"></script>
+  </body>
+</html>
