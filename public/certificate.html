@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuva — 領取證書</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#0A0A0A",
+              panel: "#1F1F1F",
+              line: "#2A2A2A",
+              mute: "#A3A3A3",
+              brand: "#3B6FE8",
+            },
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      html,
+      body {
+        background: #0a0a0a;
+      }
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 111, 232, 0.18), transparent 55%),
+          radial-gradient(ellipse 60% 40% at 80% 100%, rgba(31, 31, 31, 0.9), transparent 50%),
+          #0a0a0a;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: #3b6fe8;
+        box-shadow: 0 0 0 1px rgba(59, 111, 232, 0.45);
+      }
+      .fade-in {
+        animation: fadeIn 0.35s ease-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="font-sans text-white antialiased">
+    <div class="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-10 pt-10 sm:pt-14">
+      <header class="mb-10 text-center">
+        <p class="text-xs font-medium tracking-[0.2em] text-brand">nuva</p>
+        <h1 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">領取證書</h1>
+        <p class="mt-4 text-sm leading-relaxed text-mute">
+          恭喜完成第一屆 nuva 校園大使！
+        </p>
+      </header>
+
+      <main class="flex-1">
+        <section class="fade-in border border-line bg-panel/80 px-5 py-6">
+          <form id="claim-form" class="space-y-4" autocomplete="on">
+            <label class="block">
+              <span class="mb-1.5 block text-xs text-mute">大使編號</span>
+              <input
+                id="input-id"
+                name="id"
+                type="text"
+                inputmode="numeric"
+                required
+                class="input-field w-full border border-line bg-ink px-4 py-3 text-base text-white placeholder:text-mute/50"
+                placeholder="例如 12"
+              />
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-xs text-mute">大使姓名</span>
+              <input
+                id="input-name"
+                name="name"
+                type="text"
+                required
+                class="input-field w-full border border-line bg-ink px-4 py-3 text-base text-white placeholder:text-mute/50"
+                placeholder="與名單完全一致"
+              />
+            </label>
+            <p id="claim-error" class="hidden text-sm text-red-400" role="alert"></p>
+            <p id="claim-ok" class="hidden text-sm text-brand" role="status"></p>
+            <button
+              id="btn-download"
+              type="submit"
+              class="mt-2 w-full bg-brand px-4 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
+            >
+              下載電子證書
+            </button>
+          </form>
+        </section>
+      </main>
+
+      <footer class="mt-12 text-center text-[11px] text-mute/70">
+        <p>輸入編號與姓名即可領取 · 無需報到 PIN</p>
+        <p class="mt-3 tracking-wide">Made by none.tech · William Lu</p>
+      </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/certificate.js?v=2"></script>
+    <script src="./js/cert-claim.js?v=1"></script>
+  </body>
+</html>

@@ -24,7 +24,8 @@ flowchart LR
 
 | URL | 用途 |
 | --- | --- |
-| `/` | 大使抽籤、下載電子證書 |
+| `/` | 導向 `/certificate.html`（領取證書） |
+| `/certificate.html` | 活動結束後領取證書（僅編號＋姓名，無需 PIN） |
 | `/join.html` | 組隊大廳 |
 | `/opening.html` → `/act1.html` → `/act2.html` → `/act3.html` → `/act4.html` → `/waiting.html` → `/finale.html` | 解謎各幕 |
 | `/admin.html` | 管理後台（需 Auth + admin claim） |
@@ -41,6 +42,7 @@ flowchart LR
 | `js/config.js` | Firebase Web 設定 |
 | `js/app.js` | 驗證／抽籤／結果／觸發證書 |
 | `js/certificate.js` | 客戶端產生證書 PDF |
+| `js/cert-claim.js` | 領取證書頁：編號＋姓名驗證後下載 |
 | `js/puzzle.js` | 解謎 session、幕守衛、進度、組狀態 |
 | `js/act-page.js` | 敘事幕共用（opening／act1／act3） |
 | `js/admin.js` | 後台監控與操作 |
